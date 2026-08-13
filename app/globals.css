@@ -1,0 +1,237 @@
+@import url('https://fonts.googleapis.com/css2?family=Bitter:wght@500;700;800&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css');
+
+:root {
+  --parchment: #EEE8D9;
+  --parchment-dark: #E3DBC6;
+  --moor: #2C3A2A;
+  --moor-light: #4A5C46;
+  --ink: #1C2530;
+  --ochre: #B8842A;
+  --ochre-dark: #8F6318;
+  --brick: #9C4630;
+  --line: #C9BFA4;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  background: var(--parchment);
+  color: var(--ink);
+}
+
+#__next { height: 100%; }
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+/* Leaflet marker/popup skinning shared across the app */
+.trig-marker {
+  width: 16px; height: 16px;
+  background: var(--brick);
+  border: 2px solid var(--parchment);
+  transform: rotate(45deg);
+  box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+.user-marker {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--ochre);
+  border: 3px solid var(--ink);
+  box-shadow: 0 0 0 4px rgba(184,132,42,0.25);
+}
+.leaflet-popup-content-wrapper {
+  background: var(--parchment);
+  border-radius: 2px;
+  border: 1.5px solid var(--ink);
+}
+.leaflet-popup-tip { background: var(--parchment); }
+.popup-name { font-family: 'Bitter', serif; font-weight: 700; font-size: 15px; margin: 0 0 2px; }
+.popup-meta {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--brick); margin: 0 0 6px;
+}
+.popup-why { font-size: 12.5px; line-height: 1.4; margin: 0; max-width: 220px; }
+.popup-tags { font-size: 10.5px; color: var(--ochre-dark); margin: 6px 0 0; max-width: 220px; }
+
+.vambla-hover-tooltip {
+  background: var(--parchment) !important;
+  border: 1.5px solid var(--ink) !important;
+  border-radius: 6px !important;
+  padding: 8px 10px !important;
+  box-shadow: 0 4px 14px rgba(28,37,48,0.25) !important;
+  white-space: normal !important;
+  width: 196px !important;
+  max-width: 196px !important;
+}
+.vambla-hover-tooltip::before {
+  border-top-color: var(--ink) !important;
+}
+
+/* ---------- category grid ---------- */
+.vambla-category-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  max-width: 760px;
+  margin: 0 auto;
+}
+@media (min-width: 560px) {
+  .vambla-category-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 860px) {
+  .vambla-category-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 1180px) {
+  .vambla-category-grid { grid-template-columns: repeat(5, 1fr); }
+}
+
+.vambla-category-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #fff;
+  border: 1.5px solid var(--line);
+  border-radius: 16px;
+  padding: 20px 10px;
+  min-height: 108px;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  box-shadow: 0 1px 4px rgba(28,37,48,0.06);
+}
+.vambla-category-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(28,37,48,0.14);
+}
+.vambla-category-card:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 1px 4px rgba(28,37,48,0.10);
+}
+.vambla-category-card:focus-visible {
+  outline: 3px solid var(--ochre);
+  outline-offset: 2px;
+}
+.vambla-category-icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid currentColor;
+}
+.vambla-category-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: center;
+  line-height: 1.3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vambla-category-card { transition: none; }
+  .vambla-category-card:hover { transform: none; }
+}
+
+/* ---------- responsive layout ---------- */
+.vambla-main { display: flex; flex: 1; min-height: 0; }
+.vambla-sidebar {
+  width: 340px;
+  min-width: 340px;
+  background: var(--parchment);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.vambla-map-wrap { flex: 1; position: relative; }
+.mobile-toggle { display: none; }
+
+/* ---------- shared navigation ---------- */
+.vambla-top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  background: var(--ink);
+  border-bottom: 3px solid var(--ochre);
+}
+.vambla-top-nav-brand {
+  font-family: 'Bitter', serif;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 4px;
+  color: var(--parchment);
+}
+.vambla-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .vambla-top-nav { display: none; }
+  .vambla-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--ink);
+    border-top: 3px solid var(--ochre);
+    z-index: 2000;
+    padding: 8px 0 10px;
+  }
+  .vambla-bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    text-decoration: none;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+}
+
+@media (max-width: 768px) {
+  .vambla-main { flex-direction: column; }
+  .vambla-sidebar {
+    width: 100%;
+    min-width: 0;
+    border-right: none;
+    order: 2;
+  }
+  .vambla-map-wrap { order: 1; height: 45vh; }
+  .vambla-sidebar.hidden-mobile { display: none; }
+  .vambla-map-wrap.hidden-mobile { display: none; }
+  .mobile-toggle {
+    display: flex;
+    border-top: 1px solid var(--line);
+  }
+}
+
+.vambla-visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
