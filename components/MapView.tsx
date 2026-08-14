@@ -16,8 +16,8 @@ const iconCache: Record<string, L.DivIcon> = {};
 
 function svgMarkup(category: string): string {
   const def = iconDefForCategory(category);
-  const paths = def.paths.map((d) => `<path d="${d}"/>`).join("");
-  return `<svg viewBox="${def.viewBox}" width="19" height="19" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+  const paths = def.paths.map((d) => `<path d="${d}" fill-rule="evenodd"/>`).join("");
+  return `<svg viewBox="${def.viewBox}" width="18" height="18" fill="#fff" stroke="none">${paths}</svg>`;
 }
 
 function iconForCategory(category: string, selected = false): L.DivIcon {
@@ -205,7 +205,7 @@ function StyleSwitcher({ style, onChange }: { style: MapStyle; onChange: (s: Map
           onClick={() => onChange(opt.value)}
           aria-pressed={style === opt.value}
           style={{
-            padding: "8px 12px", fontSize: 11, fontFamily: "'IBM Plex Mono', monospace",
+            padding: "8px 12px", fontSize: 11, fontFamily: "'Nunito', sans-serif",
             border: "none", cursor: "pointer",
             background: style === opt.value ? "var(--moor)" : "transparent",
             color: style === opt.value ? "#fff" : "var(--ink)",
@@ -270,7 +270,7 @@ export default function MapView({ places, userLoc, focusedPlace, radiusMiles, on
                   />
                 )}
                 <div style={{ fontFamily: "'Bitter', serif", fontWeight: 700, fontSize: 13, whiteSpace: "normal" }}>{p.name}</div>
-                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9.5, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--moor-light)", margin: "2px 0 4px", whiteSpace: "normal" }}>
+                <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 9.5, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--moor-light)", margin: "2px 0 4px", whiteSpace: "normal" }}>
                   {p.category} · {p.county}{p.cost ? ` · ${p.cost}` : ""}
                 </div>
                 {p.whyInteresting && (

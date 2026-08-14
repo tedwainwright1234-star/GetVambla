@@ -38,7 +38,7 @@ export default function ResultCard({ place, distanceMiles, onShowOnMap }: Props)
           <span style={{ fontFamily: "'Bitter', serif", fontWeight: 700, fontSize: 15, color: "var(--ink)" }}>{place.name}</span>
           <SaveButton placeName={place.name} size={18} />
         </div>
-        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--moor-light)", margin: "2px 0 4px" }}>
+        <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 10, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--moor-light)", margin: "2px 0 4px" }}>
           {place.category} · {place.county}
           {distanceMiles !== null && ` · ${distanceMiles.toFixed(1)} mi`}
           {place.cost ? ` · ${place.cost}` : ""}
@@ -72,8 +72,8 @@ export default function ResultCard({ place, distanceMiles, onShowOnMap }: Props)
 function CategoryIconOnColor({ category }: { category: string }) {
   const def = iconDefForCategory(category);
   return (
-    <svg viewBox={def.viewBox} width={22} height={22} fill="none" stroke="#fff" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-      {def.paths.map((d, i) => <path key={i} d={d} />)}
+    <svg viewBox={def.viewBox} width={22} height={22} fill="#fff" stroke="none">
+      {def.paths.map((d, i) => <path key={i} d={d} fillRule="evenodd" />)}
     </svg>
   );
 }

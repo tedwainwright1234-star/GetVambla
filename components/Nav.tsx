@@ -11,7 +11,7 @@ const ITEMS = [
 
 function NavIcon({ d, active }: { d: string; active: boolean }) {
   return (
-    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={active ? "var(--ochre)" : "var(--parchment)"} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke={active ? "var(--ochre)" : "var(--parchment)"} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <path d={d} />
     </svg>
   );
@@ -38,7 +38,9 @@ export function TopNav() {
   const pathname = usePathname();
   return (
     <nav className="vambla-top-nav">
-      <span className="vambla-top-nav-brand">VAMBLA</span>
+      <Link href="/" style={{ display: "flex", alignItems: "center" }} aria-label="Vambla home">
+        <img src="/vambla-icon.png" alt="Vambla" height={44} style={{ height: 44, width: "auto" }} />
+      </Link>
       <div style={{ display: "flex", gap: 28 }}>
         {ITEMS.map((item) => {
           const active = pathname === item.href;
@@ -49,12 +51,11 @@ export function TopNav() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 7,
+                gap: 8,
                 textDecoration: "none",
-                fontFamily: "'IBM Plex Mono', monospace",
-                fontSize: 12,
-                letterSpacing: 1,
-                textTransform: "uppercase",
+                fontFamily: "'Nunito', sans-serif",
+                fontWeight: 700,
+                fontSize: 14.5,
                 color: active ? "var(--ochre)" : "var(--parchment)",
               }}
             >

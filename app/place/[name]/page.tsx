@@ -47,7 +47,7 @@ export default async function PlaceDetailPage({ params }: { params: Promise<{ na
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
           <div>
             <h1 style={{ fontFamily: "'Bitter', serif", fontWeight: 800, fontSize: 26, color: "var(--ink)", margin: 0 }}>{place.name}</h1>
-            <p style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--moor-light)", margin: "4px 0 0" }}>
+            <p style={{ fontFamily: "'Nunito', sans-serif", fontSize: 11, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--moor-light)", margin: "4px 0 0" }}>
               {place.category} · {place.county} · {place.country}{place.cost ? ` · ${place.cost}` : ""}
             </p>
           </div>
@@ -61,14 +61,14 @@ export default async function PlaceDetailPage({ params }: { params: Promise<{ na
         {collectionsList.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
             {collectionsList.map((c) => (
-              <span key={c} style={{ fontSize: 11, fontFamily: "'IBM Plex Mono', monospace", background: "var(--parchment-dark)", padding: "4px 10px", borderRadius: 20, color: "var(--ink)" }}>{c}</span>
+              <span key={c} style={{ fontSize: 11, fontFamily: "'Nunito', sans-serif", background: "var(--parchment-dark)", padding: "4px 10px", borderRadius: 20, color: "var(--ink)" }}>{c}</span>
             ))}
           </div>
         )}
 
         {goodForList.length > 0 && (
           <div style={{ marginBottom: 18 }}>
-            <p style={{ fontSize: 11, fontFamily: "'IBM Plex Mono', monospace", textTransform: "uppercase", letterSpacing: 0.5, color: "var(--moor-light)", marginBottom: 6 }}>Good for</p>
+            <p style={{ fontSize: 11, fontFamily: "'Nunito', sans-serif", textTransform: "uppercase", letterSpacing: 0.5, color: "var(--moor-light)", marginBottom: 6 }}>Good for</p>
             <p style={{ fontSize: 13.5, color: "var(--ink)" }}>{goodForList.join(" · ")}</p>
           </div>
         )}

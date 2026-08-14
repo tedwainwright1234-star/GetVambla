@@ -11,6 +11,7 @@ import { NEARBY_COLLECTIONS } from "@/lib/collections";
 import { TopNav, BottomNav } from "./Nav";
 import CollectionRow from "./CollectionRow";
 import SurpriseMeModal from "./SurpriseMeModal";
+import PlaceQuickViewModal from "./PlaceQuickViewModal";
 import CategoryGrid from "./CategoryGrid";
 
 type Props = {
@@ -32,6 +33,7 @@ export default function DiscoverHome({ bucketList, hiddenGems, greatViews }: Pro
   const [locationDenied, setLocationDenied] = useState(false);
   const [surprisePlace, setSurprisePlace] = useState<Place | null>(null);
   const [surpriseLoading, setSurpriseLoading] = useState(false);
+  const [quickViewPlace, setQuickViewPlace] = useState<Place | null>(null);
 
   async function loadNearby(loc: { lat: number; lng: number }) {
     setUserLoc(loc);
@@ -117,7 +119,7 @@ export default function DiscoverHome({ bucketList, hiddenGems, greatViews }: Pro
       {/* Hero */}
       <div style={{ padding: "44px 20px 30px", textAlign: "center", background: "var(--ink)" }}>
         <h1 style={{ fontFamily: "'Bitter', serif", fontWeight: 800, fontSize: "clamp(24px, 5vw, 38px)", color: "var(--parchment)", maxWidth: 620, margin: "0 auto 18px", lineHeight: 1.25 }}>
-          Discover incredible places hidden across Britain and Ireland
+          Discover remarkable places hiding in plain sight
         </h1>
 
         <form onSubmit={handleSearch} style={{ maxWidth: 480, margin: "0 auto 6px" }} role="search">
@@ -170,16 +172,16 @@ export default function DiscoverHome({ bucketList, hiddenGems, greatViews }: Pro
       {/* Collections come first - this is the main content of the homepage */}
       {(nearbyLoading || nearbyPool.length > 0) &&
         NEARBY_COLLECTIONS.map((def) => {
-          const matches = nearbyPool.filter(def.matches);
+          const matches = nearbyPool.filter(def.matches).slice(0, 30);
           if (!nearbyLoading && matches.length === 0) return null;
           return (
-            <CollectionRow key={def.key} title={def.title} places={matches} loading={nearbyLoading} />
+            <CollectionRow key={def.key} title={def.title} places={matches} loading={nearbyLoading} onSelectPlace={setQuickViewPlace} />
           );
         })}
 
-      <CollectionRow title="Bucket List" places={bucketList} />
-      <CollectionRow title="Hidden Gems" places={hiddenGems} />
-      <CollectionRow title="Great Views" places={greatViews} />
+      <CollectionRow title="Bucket List" places={bucketList} onSelectPlace={setQuickViewPlace} />
+      <CollectionRow title="Hidden Gems" places={hiddenGems} onSelectPlace={setQuickViewPlace} />
+      <CollectionRow title="Great Views" places={greatViews} onSelectPlace={setQuickViewPlace} />
 
       {/* Categories now sit at the bottom */}
       <CategoryGrid />
@@ -195,9 +197,12 @@ export default function DiscoverHome({ bucketList, hiddenGems, greatViews }: Pro
         />
       )}
       {surpriseLoading && !surprisePlace && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(28,37,48,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, color: "#fff", fontFamily: "'IBM Plex Mono', monospace" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(28,37,48,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, color: "#fff", fontFamily: "'Nunito', sans-serif" }}>
           Finding something amazing…
         </div>
+      )}
+      {quickViewPlace && (
+        <PlaceQuickViewModal place={quickViewPlace} onClose={() => setQuickViewPlace(null)} />
       )}
     </div>
   );

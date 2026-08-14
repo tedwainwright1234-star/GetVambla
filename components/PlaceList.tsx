@@ -36,7 +36,7 @@ export default function PlaceList({ places, userLoc, onSelect }: Props) {
             <span style={{ fontFamily: "'Bitter', serif", fontWeight: 700, fontSize: 15 }}>{p.name}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               {p.dist !== null && (
-                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "var(--brick)", whiteSpace: "nowrap" }}>
+                <span style={{ fontFamily: "'Nunito', sans-serif", fontSize: 11, color: "var(--brick)", whiteSpace: "nowrap" }}>
                   {kmToMiles(p.dist).toFixed(1)} mi
                 </span>
               )}
@@ -45,7 +45,7 @@ export default function PlaceList({ places, userLoc, onSelect }: Props) {
           </div>
           <div
             style={{
-              fontFamily: "'IBM Plex Mono', monospace",
+              fontFamily: "'Nunito', sans-serif",
               fontSize: 10,
               letterSpacing: 1,
               textTransform: "uppercase",

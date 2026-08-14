@@ -43,7 +43,7 @@ export default function MapLegend({ categories }: Props) {
         style={{
           width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "9px 12px", background: "none", border: "none", cursor: "pointer",
-          fontFamily: "'IBM Plex Mono', monospace", fontSize: 10.5, letterSpacing: 1,
+          fontFamily: "'Nunito', sans-serif", fontSize: 10.5, letterSpacing: 1,
           textTransform: "uppercase", color: "var(--ink)",
         }}
       >

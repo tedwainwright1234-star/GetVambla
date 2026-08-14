@@ -67,7 +67,7 @@ export default function PlaceCard({ place, onClick }: Props) {
               left: 8,
               background: "rgba(28,37,48,0.75)",
               color: "#fff",
-              fontFamily: "'IBM Plex Mono', monospace",
+              fontFamily: "'Nunito', sans-serif",
               fontSize: 9.5,
               letterSpacing: 0.5,
               textTransform: "uppercase",
@@ -86,7 +86,7 @@ export default function PlaceCard({ place, onClick }: Props) {
         </div>
         <div
           style={{
-            fontFamily: "'IBM Plex Mono', monospace",
+            fontFamily: "'Nunito', sans-serif",
             fontSize: 9.5,
             letterSpacing: 0.5,
             textTransform: "uppercase",
@@ -109,8 +109,8 @@ export default function PlaceCard({ place, onClick }: Props) {
 function CategoryIconOnWhite({ category }: { category: string }) {
   const def = iconDefForCategory(category);
   return (
-    <svg width={24} height={24} viewBox={def.viewBox} fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      {def.paths.map((d, i) => <path key={i} d={d} />)}
+    <svg width={24} height={24} viewBox={def.viewBox} fill="#fff" stroke="none">
+      {def.paths.map((d, i) => <path key={i} d={d} fillRule="evenodd" />)}
     </svg>
   );
 }

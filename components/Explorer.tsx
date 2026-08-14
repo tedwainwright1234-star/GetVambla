@@ -13,6 +13,7 @@ import FilterChips from "./FilterChips";
 import SearchBar from "./SearchBar";
 import PlaceList from "./PlaceList";
 import RadiusSelector from "./RadiusSelector";
+import MobileMapControls from "./MobileMapControls";
 
 const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
@@ -163,7 +164,7 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
           <div
             style={{
               padding: "8px 16px",
-              fontFamily: "'IBM Plex Mono', monospace",
+              fontFamily: "'Nunito', sans-serif",
               fontSize: 11,
               color: "var(--moor-light)",
             }}
@@ -178,6 +179,14 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
         </aside>
 
         <div className={`vambla-map-wrap ${mobilePane === "list" ? "hidden-mobile" : ""}`}>
+          <MobileMapControls
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            onSearchSubmit={handleSearchSubmit}
+            categories={categories}
+            activeCategory={activeCategory}
+            onSelectCategory={setActiveCategory}
+          />
           <MapView
             places={viewportPlaces}
             userLoc={userLoc}
@@ -200,7 +209,7 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
               border: "none",
               background: mobilePane === pane ? "var(--moor)" : "var(--parchment)",
               color: mobilePane === pane ? "var(--parchment)" : "var(--moor)",
-              fontFamily: "'IBM Plex Mono', monospace",
+              fontFamily: "'Nunito', sans-serif",
               fontSize: 12,
               letterSpacing: 1,
               textTransform: "uppercase",

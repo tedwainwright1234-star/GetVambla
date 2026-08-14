@@ -28,7 +28,7 @@ export default function RadiusSelector({ value, onChange, onClear }: Props) {
       >
         <span
           style={{
-            fontFamily: "'IBM Plex Mono', monospace",
+            fontFamily: "'Nunito', sans-serif",
             fontSize: 10,
             letterSpacing: 1,
             textTransform: "uppercase",
@@ -39,7 +39,7 @@ export default function RadiusSelector({ value, onChange, onClear }: Props) {
         </span>
         <span
           style={{
-            fontFamily: "'IBM Plex Mono', monospace",
+            fontFamily: "'Nunito', sans-serif",
             fontSize: 13,
             fontWeight: 600,
             color: "var(--brick)",

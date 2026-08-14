@@ -20,6 +20,11 @@ export const NEARBY_COLLECTIONS: CollectionDef[] = [
     matches: (p) => !!p.experienceCollections?.toLowerCase().includes("hidden gem"),
   },
   {
+    key: "viewpoints",
+    title: "Viewpoints nearby",
+    matches: (p) => p.category === "Viewpoint",
+  },
+  {
     key: "family-friendly",
     title: "Family-friendly places nearby",
     matches: (p) => !!p.goodFor?.toLowerCase().includes("famil"),
@@ -33,6 +38,11 @@ export const NEARBY_COLLECTIONS: CollectionDef[] = [
     key: "castles",
     title: "Castles nearby",
     matches: (p) => p.category === "Castle",
+  },
+  {
+    key: "ruins",
+    title: "Ruins nearby",
+    matches: (p) => p.category === "Ruin",
   },
   {
     key: "free",

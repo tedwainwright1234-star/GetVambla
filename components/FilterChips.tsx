@@ -11,7 +11,7 @@ export default function FilterChips({ categories, active, onSelect }: Props) {
     <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid var(--line)" }}>
       <span
         style={{
-          fontFamily: "'IBM Plex Mono', monospace",
+          fontFamily: "'Nunito', sans-serif",
           fontSize: 10,
           letterSpacing: 2,
           textTransform: "uppercase",

@@ -1,22 +1,21 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { Place } from "@/lib/types";
 import { colorForCategory } from "@/lib/categoryStyle";
 import CategoryIcon from "./CategoryIcon";
 import SaveButton from "./SaveButton";
-import { haversineKm, kmToMiles } from "@/lib/distance";
+import DirectionsButton from "./DirectionsButton";
 
 type Props = {
   place: Place;
-  userLoc: { lat: number; lng: number } | null;
   onClose: () => void;
-  onAnother: () => void;
 };
 
-export default function SurpriseMeModal({ place, userLoc, onClose, onAnother }: Props) {
+export default function PlaceQuickViewModal({ place, onClose }: Props) {
+  const router = useRouter();
   const color = colorForCategory(place.category);
-  const distanceMiles = userLoc ? kmToMiles(haversineKm(userLoc.lat, userLoc.lng, place.lat, place.lng)) : null;
-  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`;
+  const hasValidCoords = Number.isFinite(place.lat) && Number.isFinite(place.lng);
 
   return (
     <div
@@ -42,15 +41,14 @@ export default function SurpriseMeModal({ place, userLoc, onClose, onAnother }: 
               <CategoryIcon category={place.category} size={24} />
             </div>
           )}
-          <button onClick={onClose} style={{ position: "absolute", top: 10, right: 10, background: "rgba(255,255,255,0.85)", border: "none", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", fontSize: 16 }}>✕</button>
+          <button onClick={onClose} aria-label="Close" style={{ position: "absolute", top: 10, right: 10, background: "rgba(255,255,255,0.85)", border: "none", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", fontSize: 16 }}>✕</button>
         </div>
         <div style={{ padding: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <div style={{ fontFamily: "'Bitter', serif", fontWeight: 800, fontSize: 21, color: "var(--ink)" }}>{place.name}</div>
               <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 10.5, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--moor-light)", marginTop: 3 }}>
-                {place.category} · {place.county}
-                {distanceMiles !== null ? ` · ${distanceMiles.toFixed(0)} mi away` : ""}
+                {place.category} · {place.county}{place.cost ? ` · ${place.cost}` : ""}
               </div>
             </div>
             <SaveButton placeName={place.name} size={24} />
@@ -60,32 +58,23 @@ export default function SurpriseMeModal({ place, userLoc, onClose, onAnother }: 
             <p style={{ fontSize: 14, lineHeight: 1.5, color: "#3c4a3a", margin: "14px 0" }}>{place.whyInteresting}</p>
           )}
 
-          <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-            <a
-              href={directionsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ flex: 1, textAlign: "center", background: "var(--moor)", color: "#fff", padding: "11px 0", borderRadius: 8, textDecoration: "none", fontWeight: 600, fontSize: 13 }}
-            >
-              Get Directions
-            </a>
-            <button
-              onClick={onAnother}
-              style={{ flex: 1, background: "var(--ochre)", color: "var(--ink)", border: "none", padding: "11px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}
-            >
-              🎲 Another
-            </button>
+          <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+            {hasValidCoords && <DirectionsButton lat={place.lat} lng={place.lng} label="Get Directions" />}
+            {hasValidCoords && (
+              <button
+                onClick={() => router.push(`/map?q=${encodeURIComponent(place.name)}`)}
+                style={{ flex: 1, minWidth: 120, background: "var(--ochre)", color: "var(--ink)", border: "none", padding: "11px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+              >
+                Show on Map
+              </button>
+            )}
           </div>
-          {place.officialWebsite && (
-            <a
-              href={place.officialWebsite}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: "block", textAlign: "center", marginTop: 10, fontSize: 12.5, color: "var(--moor)", textDecoration: "underline" }}
-            >
-              Official website ↗
-            </a>
-          )}
+          <a
+            href={`/place/${encodeURIComponent(place.name)}`}
+            style={{ display: "block", textAlign: "center", marginTop: 10, fontSize: 12.5, color: "var(--moor)", textDecoration: "underline" }}
+          >
+            View full details
+          </a>
         </div>
       </div>
     </div>
