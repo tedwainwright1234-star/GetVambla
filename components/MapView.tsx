@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, Circle, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, Circle, ZoomControl, useMap, useMapEvents } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import type { Place } from "@/lib/types";
@@ -184,36 +184,57 @@ function ReturnToLocationControl({ userLoc }: { userLoc: { lat: number; lng: num
 // Map style switcher - Standard always available; Satellite is free/
 // keyless; Hybrid only appears if a MapTiler key is configured.
 function StyleSwitcher({ style, onChange }: { style: MapStyle; onChange: (s: MapStyle) => void }) {
+  const [open, setOpen] = useState(false);
   const options: { value: MapStyle; label: string }[] = [
-    { value: "standard", label: "Standard" },
+    { value: "standard", label: "Street" },
     { value: "satellite", label: "Satellite" },
     { value: "hybrid" as MapStyle, label: "Hybrid" },
   ];
   return (
-    <div
-      role="group"
-      aria-label="Map style"
-      style={{
-        position: "absolute", top: 14, left: 14, zIndex: 900,
-        background: "#fff", borderRadius: 8, boxShadow: "0 2px 8px rgba(28,37,48,.25)",
-        display: "flex", overflow: "hidden",
-      }}
-    >
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          onClick={() => onChange(opt.value)}
-          aria-pressed={style === opt.value}
+    <div style={{ position: "absolute", bottom: 92, right: 14, zIndex: 900 }}>
+      {open && (
+        <div
+          role="group"
+          aria-label="Map style"
           style={{
-            padding: "8px 12px", fontSize: 11, fontFamily: "'Nunito', sans-serif",
-            border: "none", cursor: "pointer",
-            background: style === opt.value ? "var(--moor)" : "transparent",
-            color: style === opt.value ? "#fff" : "var(--ink)",
+            background: "#fff", borderRadius: 10, boxShadow: "0 4px 16px rgba(28,37,48,.3)",
+            overflow: "hidden", marginBottom: 8, minWidth: 130,
           }}
         >
-          {opt.label}
-        </button>
-      ))}
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              aria-pressed={style === opt.value}
+              style={{
+                display: "block", width: "100%", textAlign: "left",
+                padding: "10px 14px", fontSize: 13, fontFamily: "'Nunito', sans-serif", fontWeight: 600,
+                border: "none", cursor: "pointer",
+                background: style === opt.value ? "var(--moor)" : "transparent",
+                color: style === opt.value ? "#fff" : "var(--ink)",
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <button
+        onClick={() => setOpen(!open)}
+        aria-label="Change map layers"
+        aria-expanded={open}
+        title="Map layers"
+        style={{
+          width: 42, height: 42, borderRadius: 8, background: "#fff",
+          border: "1.5px solid var(--ink)", boxShadow: "0 2px 8px rgba(28,37,48,.25)",
+          display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+        }}
+      >
+        <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="var(--ink)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 2L2 8l10 6 10-6-10-6z" />
+          <path d="M2 14l10 6 10-6" />
+        </svg>
+      </button>
     </div>
   );
 }
@@ -241,8 +262,10 @@ export default function MapView({ places, userLoc, focusedPlace, radiusMiles, on
       zoom={6}
       scrollWheelZoom={true}
       wheelPxPerZoomLevel={180}
+      zoomControl={false}
       style={{ height: "100%", width: "100%", background: "#dfe6da" }}
     >
+      <ZoomControl position="bottomright" />
       <TileLayer key={`${mapStyle}-base`} url={tile.base.url} attribution={tile.base.attribution} maxZoom={tile.base.maxZoom} />
       {tile.overlay && (
         <TileLayer key={`${mapStyle}-overlay`} url={tile.overlay.url} attribution={tile.overlay.attribution} maxZoom={tile.overlay.maxZoom} />

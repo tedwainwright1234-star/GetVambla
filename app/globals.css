@@ -206,8 +206,10 @@ html, body {
     min-width: 0;
     border-right: none;
     order: 2;
+    flex: 1;
+    min-height: 0;
   }
-  .vambla-map-wrap { order: 1; height: 45vh; }
+  .vambla-map-wrap { order: 1; flex: 1; min-height: 0; }
   .vambla-sidebar.hidden-mobile { display: none; }
   .vambla-map-wrap.hidden-mobile { display: none; }
   .mobile-toggle {

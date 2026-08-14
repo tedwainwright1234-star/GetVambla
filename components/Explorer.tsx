@@ -186,6 +186,8 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
             categories={categories}
             activeCategory={activeCategory}
             onSelectCategory={setActiveCategory}
+            userLoc={userLoc}
+            onClearLocation={() => setUserLoc(null)}
           />
           <MapView
             places={viewportPlaces}

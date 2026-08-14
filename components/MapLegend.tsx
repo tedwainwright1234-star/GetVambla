@@ -27,7 +27,7 @@ function LegendIcon({ category }: { category: string }) {
 }
 
 export default function MapLegend({ categories }: Props) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   return (
     <div

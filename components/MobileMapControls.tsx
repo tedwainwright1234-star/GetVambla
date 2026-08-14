@@ -10,6 +10,8 @@ type Props = {
   categories: string[];
   activeCategory: string;
   onSelectCategory: (cat: string) => void;
+  userLoc: { lat: number; lng: number } | null;
+  onClearLocation: () => void;
 };
 
 // Only rendered/visible on mobile (see .vambla-mobile-map-controls in
@@ -18,6 +20,7 @@ type Props = {
 export default function MobileMapControls({
   searchValue, onSearchChange, onSearchSubmit,
   categories, activeCategory, onSelectCategory,
+  userLoc, onClearLocation,
 }: Props) {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -58,6 +61,24 @@ export default function MobileMapControls({
           Filters {activeCategory !== "All" ? "•" : ""}
         </button>
       </div>
+
+      {/* Shown whenever a location search / "near me" is active, so it's
+          always easy to back out of it and return to free map browsing -
+          this was previously only possible from the sidebar, which is
+          hidden while viewing the map on mobile. */}
+      {userLoc && (
+        <button
+          onClick={onClearLocation}
+          style={{
+            marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6,
+            background: "var(--ink)", color: "var(--parchment)", border: "none",
+            borderRadius: 20, padding: "7px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(28,37,48,.25)",
+          }}
+        >
+          ✕ Clear location search
+        </button>
+      )}
 
       {filtersOpen && (
         <div style={{ marginTop: 8, background: "#fff", borderRadius: 10, boxShadow: "0 4px 14px rgba(28,37,48,.3)", maxHeight: "50vh", overflowY: "auto" }}>
