@@ -10,9 +10,10 @@ type Props = {
   places: Place[];
   userLoc: { lat: number; lng: number } | null;
   onSelect: (place: Place) => void;
+  focusedPlaceName?: string | null;
 };
 
-export default function PlaceList({ places, userLoc, onSelect }: Props) {
+export default function PlaceList({ places, userLoc, onSelect, focusedPlaceName }: Props) {
   const withDistance = places.map((p) => ({
     ...p,
     dist: userLoc ? haversineKm(userLoc.lat, userLoc.lng, p.lat, p.lng) : null,
@@ -21,7 +22,9 @@ export default function PlaceList({ places, userLoc, onSelect }: Props) {
 
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "6px 0" }}>
-      {withDistance.map((p) => (
+      {withDistance.map((p) => {
+        const isFocused = p.name === focusedPlaceName;
+        return (
         <div
           key={p.name}
           onClick={() => onSelect(p)}
@@ -30,6 +33,7 @@ export default function PlaceList({ places, userLoc, onSelect }: Props) {
             borderBottom: "1px solid var(--parchment-dark)",
             cursor: "pointer",
             borderLeft: `3px solid ${colorForCategory(p.category)}`,
+            background: isFocused ? "var(--parchment-dark)" : "transparent",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
@@ -62,7 +66,8 @@ export default function PlaceList({ places, userLoc, onSelect }: Props) {
             <div style={{ fontSize: 10.5, color: "var(--ochre-dark)", marginTop: 4 }}>{p.experienceCollections}</div>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

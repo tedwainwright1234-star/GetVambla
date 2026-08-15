@@ -5,14 +5,22 @@ import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import type { Place } from "@/lib/types";
 import type { Bounds } from "@/lib/getPlacesInBounds";
-import { getPlacesInBounds, getPlacesNearby, searchPlacesByName } from "@/lib/getPlacesInBounds";
+import {
+  getPlacesInBounds,
+  getPlacesNearby,
+  getPlacesByCategories,
+  searchPlacesByName,
+  findExactPlaceMatch,
+  getPlaceByName,
+  WORLD_BOUNDS,
+} from "@/lib/getPlacesInBounds";
 import { parseSearch } from "@/lib/searchParser";
 import { geocodeLocation } from "@/lib/geocodeLocation";
 import Header from "./Header";
 import FilterChips from "./FilterChips";
 import SearchBar from "./SearchBar";
 import PlaceList from "./PlaceList";
-import RadiusSelector from "./RadiusSelector";
+import ActiveFilters from "./ActiveFilters";
 import MobileMapControls from "./MobileMapControls";
 
 const MapView = dynamic(() => import("./MapView"), {
@@ -24,7 +32,9 @@ const MapView = dynamic(() => import("./MapView"), {
   ),
 });
 
-// Matches the 16 categories in your enriched dataset.
+// Matches the 16 categories in your enriched dataset. Always shown in
+// full in the picker (not narrowed to "what's currently on screen") so
+// you can always add a category that isn't visible in the current view.
 const ALL_CATEGORIES = [
   "All", "Castle", "Ruin", "Historic Pub", "Stately Home", "Historic Building",
   "Abbey/Priory", "Church", "Fort", "Roman History", "Bridge", "Lighthouse",
@@ -33,17 +43,31 @@ const ALL_CATEGORIES = [
 
 export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) {
   const searchParams = useSearchParams();
-  const initialCategory = searchParams.get("category") ?? "All";
+  const initialCategory = searchParams.get("category");
   const initialQuery = searchParams.get("q") ?? "";
+  const initialPlaceParam = searchParams.get("place");
+  const initialLocLabel = searchParams.get("loc");
   const paramLat = searchParams.get("lat");
   const paramLng = searchParams.get("lng");
   const paramRadius = searchParams.get("radius");
   const initialUserLoc = paramLat && paramLng ? { lat: parseFloat(paramLat), lng: parseFloat(paramLng) } : null;
 
-  const [activeCategory, setActiveCategory] = useState(initialCategory);
+  // Multi-select: an empty array means "All" (no category filter).
+  // category can arrive as a single value or a comma-joined list (see
+  // toCategoryFilterParam in lib/getPlacesInBounds.ts) - either way it's
+  // split into the same array the chips/pills work with.
+  const [activeCategories, setActiveCategories] = useState<string[]>(
+    initialCategory ? initialCategory.split(",").filter((c) => c && c !== "All") : []
+  );
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(initialUserLoc);
+  const [locationLabel, setLocationLabel] = useState<string | null>(initialUserLoc ? initialLocLabel : null);
   const [radiusMiles, setRadiusMiles] = useState<number | null>(paramRadius ? parseInt(paramRadius, 10) : 20);
   const [focusedPlace, setFocusedPlace] = useState<Place | null>(null);
+  // "navigate" = deliberately jump to + zoom in on this place (exact
+  // search, "Show on Map", a shared URL). "select" = clicked a marker or
+  // list item while already browsing - select it and open its card, but
+  // never change the current zoom level.
+  const [focusIntent, setFocusIntent] = useState<"navigate" | "select">("select");
   const [viewportPlaces, setViewportPlaces] = useState<Place[]>(initialPlaces);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
@@ -51,57 +75,73 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
   const [mobilePane, setMobilePane] = useState<"map" | "list">("map");
   const lastBounds = useRef<Bounds | null>(null);
 
-  const categories = useMemo(() => {
-    const found = new Set(viewportPlaces.map((p) => p.category));
-    return ["All", ...ALL_CATEGORIES.filter((c) => c !== "All" && found.has(c))];
-  }, [viewportPlaces]);
-
+  // Category-driven results (no location set) and location-driven results
+  // both bypass "what's in the current viewport" - they own the result
+  // set outright. Plain browsing (no filters at all) is the only case
+  // that's tied to the map's viewport.
   const handleBoundsChange = useCallback(
     async (bounds: Bounds) => {
-      if (userLoc) return; // when "near me" mode is active, radius drives the results instead
+      if (userLoc || activeCategories.length > 0) return;
       lastBounds.current = bounds;
       setLoading(true);
-      const places = await getPlacesInBounds(bounds, activeCategory);
+      const places = await getPlacesInBounds(bounds, null);
       if (lastBounds.current === bounds) {
         setViewportPlaces(places);
         setLoading(false);
       }
     },
-    [activeCategory, userLoc]
+    [userLoc, activeCategories]
   );
 
-  // Radius-based fetch whenever we have a location, and it re-runs if the
-  // radius or category changes - this is what powers "Explore Near Me".
+  const fetchRequestId = useRef(0);
   useEffect(() => {
-    if (!userLoc) return;
-    let cancelled = false;
-    setLoading(true);
+    const requestId = ++fetchRequestId.current;
     (async () => {
-      const places = radiusMiles === null
-        ? await getPlacesInBounds({ minLat: -90, minLng: -180, maxLat: 90, maxLng: 180 }, activeCategory)
-        : await getPlacesNearby(userLoc, radiusMiles, activeCategory);
-      if (!cancelled) {
+      let places: Place[] | null = null;
+
+      if (userLoc) {
+        // A location is active - radius drives the results (or "Anywhere"
+        // if the radius has been cleared to unlimited).
+        setLoading(true);
+        places = radiusMiles === null
+          ? await getPlacesInBounds(WORLD_BOUNDS, activeCategories)
+          : await getPlacesNearby(userLoc, radiusMiles, activeCategories);
+      } else if (activeCategories.length > 0) {
+        // Category chosen, no location - show it everywhere (UK &
+        // Ireland), not just whatever happens to be in view. This is
+        // what makes typing/tapping "Castle" show every castle.
+        setLoading(true);
+        places = await getPlacesByCategories(activeCategories);
+      } else if (lastBounds.current) {
+        // No filters at all - plain viewport browsing.
+        setLoading(true);
+        places = await getPlacesInBounds(lastBounds.current, null);
+      }
+
+      // Only the MOST RECENT request is allowed to commit its result -
+      // if the radius (or category/location) changed again while this
+      // one was in flight, a newer request has already started and this
+      // stale one is discarded, however it happens to resolve.
+      if (requestId === fetchRequestId.current && places !== null) {
         setViewportPlaces(places);
         setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
-  }, [userLoc, radiusMiles, activeCategory]);
+  }, [userLoc, radiusMiles, activeCategories]);
 
-  useEffect(() => {
-    if (!userLoc && lastBounds.current) handleBoundsChange(lastBounds.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCategory]);
-
+  // Live name-search-as-you-type. SearchBar/MobileMapControls already
+  // debounce keystrokes locally before calling onChange, so this can run
+  // as soon as searchQuery changes rather than debouncing a second time.
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
       return;
     }
-    const timeout = setTimeout(async () => {
-      setSearchResults(await searchPlacesByName(searchQuery));
-    }, 300);
-    return () => clearTimeout(timeout);
+    let cancelled = false;
+    searchPlacesByName(searchQuery).then((results) => {
+      if (!cancelled) setSearchResults(results);
+    });
+    return () => { cancelled = true; };
   }, [searchQuery]);
 
   function handleLocate() {
@@ -112,43 +152,166 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setFocusedPlace(null);
+        setLocationLabel("your location");
         setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       },
       () => alert("Could not get your location — try browsing the map instead.")
     );
   }
 
-  function handleSelectPlace(place: Place) {
+  // A deliberate jump to a specific place - exact search match, "Show on
+  // Map" from the homepage/detail page, or a shared/refreshed map URL.
+  // This is the only path that's allowed to change the zoom level.
+  const navigateToPlace = useCallback((place: Place) => {
     setFocusedPlace(place);
+    setFocusIntent("navigate");
     setSearchQuery("");
     setMobilePane("map");
+  }, []);
+
+  // Clicking a marker or a list item while already browsing the map -
+  // selects the place and opens its card, but must NEVER change the
+  // current zoom level (see MapController in MapView.tsx).
+  const handleSelectPlace = useCallback((place: Place) => {
+    setFocusedPlace(place);
+    setFocusIntent("select");
+    setSearchQuery("");
+    setMobilePane("map");
+  }, []);
+
+  const clearFocusedPlace = useCallback(() => {
+    setFocusedPlace(null);
+  }, []);
+
+  // Picks up a place passed in via the URL (e.g. /map?place=Castle+Howard
+  // from "Show on Map" elsewhere in the app, or a refreshed/shared map
+  // link) and navigates straight to it, once, on mount.
+  const handledInitialPlaceParam = useRef(false);
+  useEffect(() => {
+    if (handledInitialPlaceParam.current || !initialPlaceParam) return;
+    handledInitialPlaceParam.current = true;
+    (async () => {
+      const match = (await getPlaceByName(initialPlaceParam)) ?? (await findExactPlaceMatch(initialPlaceParam));
+      if (match) navigateToPlace(match);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keeps the FULL active search reflected in the URL - category(ies),
+  // location + its label, radius, and the focused place - using stable
+  // identifiers (place name, category name, location label) rather than
+  // fragile in-memory state. This is what makes a search survive: a
+  // refresh, a shared link, or navigating away and back via the site's
+  // global "Map" nav link (which just points at "/map" - without this,
+  // that link would always land on a blank map, dropping whatever search
+  // was active).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+
+    if (activeCategories.length) params.set("category", activeCategories.join(","));
+    else params.delete("category");
+
+    if (userLoc) {
+      params.set("lat", String(userLoc.lat));
+      params.set("lng", String(userLoc.lng));
+      if (locationLabel) params.set("loc", locationLabel);
+      else params.delete("loc");
+      if (radiusMiles !== null) params.set("radius", String(radiusMiles));
+      else params.delete("radius");
+    } else {
+      params.delete("lat");
+      params.delete("lng");
+      params.delete("loc");
+      params.delete("radius");
+    }
+
+    if (focusedPlace) params.set("place", focusedPlace.name);
+    else params.delete("place");
+
+    window.history.replaceState(null, "", url.toString());
+  }, [activeCategories, userLoc, locationLabel, radiusMiles, focusedPlace]);
+
+  // Toggling a category never wipes out the others - this is what lets
+  // someone search "castles", then tap "Ruin" too, and see both at once.
+  // Tapping "All" (or removing the last remaining category) clears back
+  // to no filter.
+  function toggleCategory(cat: string) {
+    if (cat === "All") {
+      setActiveCategories([]);
+      return;
+    }
+    setActiveCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    );
   }
 
-  // Pressing Enter in the map search box: "castles in York" filters the
-  // map to Castle AND recentres on York - all without leaving the map.
-  async function handleSearchSubmit() {
-    const value = searchQuery.trim();
-    if (!value) return;
-    const parsed = parseSearch(value);
+  function clearLocation() {
+    setUserLoc(null);
+    setLocationLabel(null);
+  }
+
+  // Pressing Enter (or tapping the mobile search button): "castles in
+  // York" filters to Castle AND recentres on York, as removable filters -
+  // all without leaving the map. Typing an EXACT place name (e.g.
+  // "Bamburgh Castle") is checked first and jumps straight to that one
+  // place instead. A typed category is ADDED to whatever's already
+  // selected (searching "Castles" then "Ruins" shows both) rather than
+  // replacing it - use a pill's ✕ or "Clear all" to start over.
+  async function handleSearchSubmit(value: string) {
+    const query = value.trim();
+    if (!query) return;
+
+    const exact = await findExactPlaceMatch(query);
+    if (exact) {
+      navigateToPlace(exact);
+      return;
+    }
+
+    const parsed = parseSearch(query);
 
     if (parsed.category) {
-      setActiveCategory(parsed.category);
+      const cat = parsed.category;
+      setActiveCategories((prev) => (prev.includes(cat) ? prev : [...prev, cat]));
     }
+
     if (parsed.location) {
       const geo = await geocodeLocation(parsed.location);
       if (geo) {
         setFocusedPlace(null);
         setUserLoc({ lat: geo.lat, lng: geo.lng });
-        if (parsed.radiusMiles) setRadiusMiles(parsed.radiusMiles);
+        setLocationLabel(parsed.location);
+        setRadiusMiles(parsed.radiusMiles ?? radiusMiles ?? 20);
         setSearchQuery("");
         return;
       }
+      // Couldn't geocode it - fall through and leave the live name-search
+      // results as they are, rather than silently doing nothing.
+      return;
     }
-    // No location resolved (or none given) - leave the existing live
+
+    if (parsed.category) {
+      // Category only, no location - go nationwide and drop any location
+      // filter that might have been active from an earlier search.
+      clearLocation();
+      setSearchQuery("");
+    }
+    // Neither a category nor a location parsed - leave the existing live
     // name-search results as they are, matching by name instead.
   }
 
-  const listToShow = searchQuery.trim() ? searchResults : viewportPlaces;
+  // When an exact place is searched for and focused, it should always
+  // show up as a pin and in the list - even if it happens to fall
+  // outside the currently active category/location filters, since the
+  // person explicitly asked for it by name.
+  const displayPlaces = useMemo(() => {
+    if (!focusedPlace) return viewportPlaces;
+    if (viewportPlaces.some((p) => p.name === focusedPlace.name)) return viewportPlaces;
+    return [focusedPlace, ...viewportPlaces];
+  }, [viewportPlaces, focusedPlace]);
+
+  const listToShow = searchQuery.trim() ? searchResults : displayPlaces;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
@@ -157,10 +320,17 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
       <div className="vambla-main">
         <aside className={`vambla-sidebar ${mobilePane === "map" ? "hidden-mobile" : ""}`}>
           <SearchBar value={searchQuery} onChange={setSearchQuery} onSubmit={handleSearchSubmit} />
-          {userLoc && (
-            <RadiusSelector value={radiusMiles} onChange={setRadiusMiles} onClear={() => setUserLoc(null)} />
-          )}
-          <FilterChips categories={categories} active={activeCategory} onSelect={setActiveCategory} />
+          <ActiveFilters
+            categories={activeCategories}
+            locationLabel={locationLabel}
+            radiusMiles={radiusMiles}
+            focusedPlaceName={focusedPlace?.name ?? null}
+            onRemoveCategory={toggleCategory}
+            onClearLocation={clearLocation}
+            onChangeRadius={setRadiusMiles}
+            onClearFocusedPlace={clearFocusedPlace}
+          />
+          <FilterChips categories={ALL_CATEGORIES} active={activeCategories} onSelect={toggleCategory} />
           <div
             style={{
               padding: "8px 16px",
@@ -173,9 +343,9 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
               ? "Loading…"
               : searchQuery.trim()
               ? `${listToShow.length} result${listToShow.length === 1 ? "" : "s"}`
-              : `${listToShow.length} place${listToShow.length === 1 ? "" : "s"} ${userLoc ? "nearby" : "in view"}`}
+              : `${listToShow.length} place${listToShow.length === 1 ? "" : "s"} ${userLoc ? "nearby" : activeCategories.length > 0 ? "found" : "in view"}`}
           </div>
-          <PlaceList places={listToShow} userLoc={userLoc} onSelect={handleSelectPlace} />
+          <PlaceList places={listToShow} userLoc={userLoc} onSelect={handleSelectPlace} focusedPlaceName={focusedPlace?.name ?? null} />
         </aside>
 
         <div className={`vambla-map-wrap ${mobilePane === "list" ? "hidden-mobile" : ""}`}>
@@ -183,19 +353,26 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
             onSearchSubmit={handleSearchSubmit}
-            categories={categories}
-            activeCategory={activeCategory}
-            onSelectCategory={setActiveCategory}
-            userLoc={userLoc}
-            onClearLocation={() => setUserLoc(null)}
+            categories={ALL_CATEGORIES}
+            activeCategories={activeCategories}
+            onToggleCategory={toggleCategory}
+            locationLabel={locationLabel}
+            radiusMiles={radiusMiles}
+            onChangeRadius={setRadiusMiles}
+            onClearLocation={clearLocation}
+            focusedPlaceName={focusedPlace?.name ?? null}
+            onClearFocusedPlace={clearFocusedPlace}
           />
           <MapView
-            places={viewportPlaces}
+            places={displayPlaces}
             userLoc={userLoc}
+            locationLabel={locationLabel}
             focusedPlace={focusedPlace}
+            focusIntent={focusIntent}
             radiusMiles={userLoc ? radiusMiles : null}
             onBoundsChange={handleBoundsChange}
             onSelectPlace={handleSelectPlace}
+            onCloseFocused={clearFocusedPlace}
           />
         </div>
       </div>

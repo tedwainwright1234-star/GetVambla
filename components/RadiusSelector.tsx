@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+
 type Props = {
   value: number | null; // null = "Anywhere" (no limit)
   onChange: (miles: number | null) => void;
@@ -8,13 +10,33 @@ type Props = {
 
 const MAX = 100; // dragging to the far right means "100+ miles" = Anywhere
 
+// Keeps its own local value for instant, smooth dragging, and only
+// commits to the parent (which triggers the actual places re-fetch)
+// once the drag settles for a moment. Without this, every single pixel
+// of movement fired a brand new network request - on a slow connection
+// the very first (smallest radius) request could easily be the one that
+// happens to land last and "win", which is exactly what made it look
+// like the radius was stuck on the original value even though you'd
+// dragged it further.
 export default function RadiusSelector({ value, onChange, onClear }: Props) {
-  const sliderValue = value === null ? MAX : value;
-  const label = value === null ? "Anywhere" : `${value} mile${value === 1 ? "" : "s"}`;
+  const [local, setLocal] = useState(value === null ? MAX : value);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Stay in sync when the parent value changes from outside (e.g. a
+  // fresh location search setting a new default radius).
+  useEffect(() => {
+    setLocal(value === null ? MAX : value);
+  }, [value]);
 
   function handleSlide(raw: number) {
-    onChange(raw >= MAX ? null : raw);
+    setLocal(raw);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      onChange(raw >= MAX ? null : raw);
+    }, 300);
   }
+
+  const label = local >= MAX ? "Anywhere" : `${local} mile${local === 1 ? "" : "s"}`;
 
   return (
     <div style={{ padding: "0 16px 14px" }}>
@@ -55,7 +77,7 @@ export default function RadiusSelector({ value, onChange, onClear }: Props) {
           min={1}
           max={MAX}
           step={1}
-          value={sliderValue}
+          value={local}
           onChange={(e) => handleSlide(Number(e.target.value))}
           style={{
             flex: 1,

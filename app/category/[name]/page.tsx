@@ -36,6 +36,7 @@ export default function CategoryResultsPage({ params }: { params: Promise<{ name
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
   const [view, setView] = useState<"list" | "map">("list");
   const [focusedPlace, setFocusedPlace] = useState<Place | null>(null);
+  const [focusIntent, setFocusIntent] = useState<"navigate" | "select">("select");
 
   // If a location was typed in search (e.g. "Castles in North Yorkshire"),
   // use THAT - never fall back to device geolocation in this case, since
@@ -98,7 +99,13 @@ export default function CategoryResultsPage({ params }: { params: Promise<{ name
 
   function handleShowOnMap(place: Place) {
     setFocusedPlace(place);
+    setFocusIntent("navigate");
     setView("map");
+  }
+
+  function handleSelectOnMap(place: Place) {
+    setFocusedPlace(place);
+    setFocusIntent("select");
   }
 
   const resultsWithDistance = results
@@ -191,10 +198,13 @@ export default function CategoryResultsPage({ params }: { params: Promise<{ name
           <MapView
             places={resultsWithDistance}
             userLoc={userLoc}
+            locationLabel={locationLabel}
             focusedPlace={focusedPlace}
+            focusIntent={focusIntent}
             radiusMiles={userLoc ? radiusMiles : null}
             onBoundsChange={() => {}}
-            onSelectPlace={setFocusedPlace}
+            onSelectPlace={handleSelectOnMap}
+            onCloseFocused={() => setFocusedPlace(null)}
           />
         </div>
       )}

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, Circle, ZoomControl, useMap, useMapEvents } from "react-leaflet";
+import { memo, useEffect, useRef, useState } from "react";
+import { MapContainer, TileLayer, Marker, Tooltip, Circle, ZoomControl, useMap, useMapEvents } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import type { Place } from "@/lib/types";
@@ -9,8 +9,7 @@ import type { Bounds } from "@/lib/getPlacesInBounds";
 import { colorForCategory } from "@/lib/categoryStyle";
 import { iconDefForCategory } from "./CategoryIcon";
 import MapLegend from "./MapLegend";
-import DirectionsButton from "./DirectionsButton";
-import { haversineKm, kmToMiles } from "@/lib/distance";
+import PlaceDetailCard from "./PlaceDetailCard";
 
 const iconCache: Record<string, L.DivIcon> = {};
 
@@ -53,23 +52,45 @@ const userIcon = L.divIcon({
   iconAnchor: [7, 7],
 });
 
-// Map style options. OSM is the default and always available (no key).
-// Satellite and Hybrid both use Esri's public tile services, which are
-// free and keyless for light/moderate use - no signup needed. Hybrid
-// stacks a roads/labels reference layer on top of the satellite imagery.
-type MapStyle = "standard" | "satellite" | "hybrid";
+// Map style options. "Standard" is the default - see its comment below
+// for why it's CARTO rather than raw OSM tiles. Satellite and Hybrid both
+// use Esri's public tile services, which are free and keyless for light/
+// moderate use - no signup needed. Hybrid stacks a roads/labels reference
+// layer on top of the satellite imagery.
+type MapStyle = "standard" | "osm" | "satellite" | "hybrid";
 
 type TileConfig = {
-  base: { url: string; attribution: string; maxZoom: number };
-  overlay?: { url: string; attribution: string; maxZoom: number };
+  base: { url: string; attribution: string; maxZoom: number; detectRetina?: boolean };
+  overlay?: { url: string; attribution: string; maxZoom: number; detectRetina?: boolean };
 };
 
 const TILE_LAYERS: Record<MapStyle, TileConfig> = {
+  // Default style. Same OpenStreetMap data underneath, served through
+  // CARTO's free Voyager basemap - which genuinely supports retina/
+  // high-DPI tiles (the {r} placeholder below becomes "@2x" on
+  // high-density screens via detectRetina). This is the actual fix for
+  // the blurry-labels issue: OSM's own tile servers only ever serve flat
+  // 256px tiles with no retina variant at all, so on any Retina/high-DPI
+  // display the browser has no choice but to upscale a lower-resolution
+  // image - exactly the softness that made labels like "London" look
+  // pixelated. No API key, no cost, no new dependency - just a different
+  // free tile source for the same underlying map data.
   standard: {
+    base: {
+      url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+      attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+      maxZoom: 20,
+      detectRetina: true,
+    },
+  },
+  // Classic OpenStreetMap tiles, kept available as an explicit choice -
+  // flat 256px with no retina variant (this is the style that looked
+  // soft on high-DPI screens; "Standard" above is the crisper default).
+  osm: {
     base: {
       url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       attribution: "&copy; OpenStreetMap contributors",
-      maxZoom: 18,
+      maxZoom: 19,
     },
   },
   satellite: {
@@ -98,21 +119,40 @@ const TILE_LAYERS: Record<MapStyle, TileConfig> = {
 type Props = {
   places: Place[];
   userLoc: { lat: number; lng: number } | null;
+  locationLabel?: string | null;
   focusedPlace: Place | null;
+  // "navigate" = a deliberate jump to this place (exact search, "Show on
+  // Map", a shared/refreshed URL) - the map centres and zooms in.
+  // "select" = the person clicked a marker or list item while already
+  // browsing the map - the place is selected and its card opens, but the
+  // current zoom level is left exactly as it was (see requirement: marker
+  // clicks must never change zoom).
+  focusIntent: "navigate" | "select";
   radiusMiles: number | null; // null = "Anywhere", no circle drawn
   onBoundsChange: (bounds: Bounds) => void;
   onSelectPlace?: (place: Place) => void;
+  onCloseFocused?: () => void;
 };
 
-function MapController({ userLoc, focusedPlace }: Pick<Props, "userLoc" | "focusedPlace">) {
+function MapController({ userLoc, focusedPlace, focusIntent }: Pick<Props, "userLoc" | "focusedPlace" | "focusIntent">) {
   const map = useMap();
+
+  // Only a genuine "navigate" (not a marker/list "select") ever changes
+  // the zoom level - this is what keeps clicking a marker from zooming
+  // the map out to fit a fixed level.
   useEffect(() => {
-    if (focusedPlace) {
+    if (focusedPlace && focusIntent === "navigate") {
       map.setView([focusedPlace.lat, focusedPlace.lng], 13, { animate: true });
-    } else if (userLoc) {
-      map.setView([userLoc.lat, userLoc.lng], 10, { animate: true });
     }
-  }, [userLoc, focusedPlace, map]);
+  }, [focusedPlace, focusIntent, map]);
+
+  // A brand new location search (not a place selection, not closing a
+  // card) recentres the map - this is the "Explore Near Me" / typed
+  // location behaviour, unrelated to marker selection.
+  useEffect(() => {
+    if (userLoc) map.setView([userLoc.lat, userLoc.lng], 10, { animate: true });
+  }, [userLoc, map]);
+
   return null;
 }
 
@@ -181,12 +221,13 @@ function ReturnToLocationControl({ userLoc }: { userLoc: { lat: number; lng: num
   );
 }
 
-// Map style switcher - Standard always available; Satellite is free/
-// keyless; Hybrid only appears if a MapTiler key is configured.
+// Map style switcher - all four options are free/keyless (CARTO Voyager,
+// classic OSM, and Esri satellite/hybrid all need no API key or signup).
 function StyleSwitcher({ style, onChange }: { style: MapStyle; onChange: (s: MapStyle) => void }) {
   const [open, setOpen] = useState(false);
   const options: { value: MapStyle; label: string }[] = [
-    { value: "standard", label: "Street" },
+    { value: "standard", label: "Standard" },
+    { value: "osm", label: "OpenStreetMap" },
     { value: "satellite", label: "Satellite" },
     { value: "hybrid" as MapStyle, label: "Hybrid" },
   ];
@@ -239,7 +280,7 @@ function StyleSwitcher({ style, onChange }: { style: MapStyle; onChange: (s: Map
   );
 }
 
-export default function MapView({ places, userLoc, focusedPlace, radiusMiles, onBoundsChange, onSelectPlace }: Props) {
+function MapView({ places, userLoc, locationLabel, focusedPlace, focusIntent, radiusMiles, onBoundsChange, onSelectPlace, onCloseFocused }: Props) {
   const [mapStyle, setMapStyle] = useState<MapStyle>("standard");
 
   // Data-safety guard: never attempt to render a marker for a place with
@@ -266,19 +307,19 @@ export default function MapView({ places, userLoc, focusedPlace, radiusMiles, on
       style={{ height: "100%", width: "100%", background: "#dfe6da" }}
     >
       <ZoomControl position="bottomright" />
-      <TileLayer key={`${mapStyle}-base`} url={tile.base.url} attribution={tile.base.attribution} maxZoom={tile.base.maxZoom} />
+      <TileLayer key={`${mapStyle}-base`} url={tile.base.url} attribution={tile.base.attribution} maxZoom={tile.base.maxZoom} detectRetina={tile.base.detectRetina} />
       {tile.overlay && (
-        <TileLayer key={`${mapStyle}-overlay`} url={tile.overlay.url} attribution={tile.overlay.attribution} maxZoom={tile.overlay.maxZoom} />
+        <TileLayer key={`${mapStyle}-overlay`} url={tile.overlay.url} attribution={tile.overlay.attribution} maxZoom={tile.overlay.maxZoom} detectRetina={tile.overlay.detectRetina} />
       )}
 
       <MarkerClusterGroup chunkedLoading maxClusterRadius={50}>
         {validPlaces.map((p) => {
-          const distanceMiles = userLoc ? kmToMiles(haversineKm(userLoc.lat, userLoc.lng, p.lat, p.lng)) : null;
           return (
           <Marker
             key={`${p.name}-${p.lat}-${p.lng}`}
             position={[p.lat, p.lng]}
             icon={iconForCategory(p.category, focusedPlace?.name === p.name)}
+            opacity={focusedPlace && focusedPlace.name !== p.name ? 0.4 : 1}
             eventHandlers={{ click: () => onSelectPlace?.(p) }}
             zIndexOffset={focusedPlace?.name === p.name ? 500 : 0}
           >
@@ -301,57 +342,55 @@ export default function MapView({ places, userLoc, focusedPlace, radiusMiles, on
                 )}
               </div>
             </Tooltip>
-            <Popup>
-              <div style={{ width: 200 }}>
-                {p.imageUrl && (
-                  <img
-                    src={p.imageUrl}
-                    alt={p.name}
-                    style={{ width: "100%", height: 100, objectFit: "cover", borderRadius: 4, marginBottom: 6 }}
-                    loading="lazy"
-                  />
-                )}
-                <p className="popup-name">{p.name}</p>
-                <p className="popup-meta">
-                  {p.category} · {p.county}
-                  {p.cost ? ` · ${p.cost}` : ""}
-                  {distanceMiles !== null ? ` · ${distanceMiles.toFixed(1)} mi` : ""}
-                </p>
-                {p.whyInteresting && <p className="popup-why">{p.whyInteresting}</p>}
-                <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                  <DirectionsButton lat={p.lat} lng={p.lng} compact />
-                  <a
-                    href={`/place/${encodeURIComponent(p.name)}`}
-                    style={{ fontSize: 11.5, fontWeight: 600, padding: "6px 10px", borderRadius: 7, border: "1.5px solid var(--ochre-dark)", color: "var(--ochre-dark)", textDecoration: "none" }}
-                  >
-                    View details
-                  </a>
-                </div>
-              </div>
-            </Popup>
           </Marker>
         );})}
       </MarkerClusterGroup>
 
       {userLoc && (
         <>
-          <Marker position={[userLoc.lat, userLoc.lng]} icon={userIcon} zIndexOffset={1000} />
+          <Marker position={[userLoc.lat, userLoc.lng]} icon={userIcon} zIndexOffset={1000}>
+            {locationLabel && (
+              <Tooltip permanent direction="top" offset={[0, -8]} opacity={1} className="vambla-centre-label">
+                {locationLabel === "your location" ? "Your location" : locationLabel}
+              </Tooltip>
+            )}
+          </Marker>
           {radiusMiles !== null && (
-            <Circle
-              center={[userLoc.lat, userLoc.lng]}
-              radius={radiusMiles * 1609.34}
-              pathOptions={{ color: "#B8842A", weight: 1.5, opacity: 0.6, fill: true, fillOpacity: 0.04, dashArray: "4 6" }}
-            />
+            <>
+              {/* Dark contrast halo underneath - keeps the boundary
+                  readable against bright basemaps (satellite imagery
+                  especially), where a thin ochre line alone tends to
+                  disappear. */}
+              <Circle
+                center={[userLoc.lat, userLoc.lng]}
+                radius={radiusMiles * 1609.34}
+                pathOptions={{ color: "#1C2530", weight: 5, opacity: 0.35, fill: false }}
+              />
+              {/* The actual boundary - thicker and much more opaque than
+                  before, with a light fill so the search area reads
+                  clearly at a glance without hiding roads/markers under
+                  it. */}
+              <Circle
+                center={[userLoc.lat, userLoc.lng]}
+                radius={radiusMiles * 1609.34}
+                pathOptions={{ color: "#B8842A", weight: 3, opacity: 0.95, fill: true, fillColor: "#B8842A", fillOpacity: 0.07, dashArray: "8 6" }}
+              />
+            </>
           )}
         </>
       )}
 
-      <MapController userLoc={userLoc} focusedPlace={focusedPlace} />
+      <MapController userLoc={userLoc} focusedPlace={focusedPlace} focusIntent={focusIntent} />
       <BoundsWatcher onBoundsChange={handleBoundsChangeWrapped} />
       <ReturnToLocationControl userLoc={userLoc} />
     </MapContainer>
     <StyleSwitcher style={mapStyle} onChange={setMapStyle} />
     <MapLegend categories={visibleCategories} />
+    {focusedPlace && (
+      <PlaceDetailCard place={focusedPlace} userLoc={userLoc} onClose={() => onCloseFocused?.()} />
+    )}
     </div>
   );
 }
+
+export default memo(MapView);

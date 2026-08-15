@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Place } from "@/lib/types";
 import { getRandomPlaces } from "@/lib/discover";
-import { getPlacesNearby } from "@/lib/getPlacesInBounds";
+import { getPlacesNearby, findExactPlaceMatch } from "@/lib/getPlacesInBounds";
 import { parseSearch } from "@/lib/searchParser";
 import { geocodeLocation } from "@/lib/geocodeLocation";
 import { NEARBY_COLLECTIONS } from "@/lib/collections";
+import { shuffle } from "@/lib/shuffle";
 import { TopNav, BottomNav } from "./Nav";
 import CollectionRow from "./CollectionRow";
 import SurpriseMeModal from "./SurpriseMeModal";
@@ -39,7 +40,11 @@ export default function DiscoverHome({ bucketList, hiddenGems, greatViews }: Pro
     setUserLoc(loc);
     setNearbyLoading(true);
     const places = await getPlacesNearby(loc, NEARBY_RADIUS_MILES, null);
-    setNearbyPool(places.filter((p) => p.imageUrl));
+    // nearby_places() orders nearest-first, which is right for a single
+    // "how far away" answer but wrong for these rotating collection rows
+    // - without shuffling, the same nearest 30 pubs/castles/etc would show
+    // up every single time. Shuffle once here so each visit mixes it up.
+    setNearbyPool(shuffle(places.filter((p) => p.imageUrl)));
     setNearbyLoading(false);
   }
 
@@ -84,16 +89,41 @@ export default function DiscoverHome({ bucketList, hiddenGems, greatViews }: Pro
     if (!value) return;
     setSearchError(null);
 
+    setSearchBusy(true);
+    const exact = await findExactPlaceMatch(value);
+    setSearchBusy(false);
+    if (exact) {
+      router.push(`/place/${encodeURIComponent(exact.name)}`);
+      return;
+    }
+
     const parsed = parseSearch(value);
 
-    // "Castles in North Yorkshire" -> go straight to that category's
-    // results page, with the typed location passed along so it uses
-    // THAT place, not your current location.
+    // "Castles in North Yorkshire" - resolve the location once here and
+    // send BOTH the category and the resolved coordinates into /map, so
+    // Map View opens already showing exactly this search (not a
+    // nationwide category search, not a re-prompt for location).
+    if (parsed.category && parsed.location) {
+      setSearchBusy(true);
+      const geo = await geocodeLocation(parsed.location);
+      setSearchBusy(false);
+      if (geo) {
+        const url = new URL("/map", window.location.origin);
+        url.searchParams.set("category", parsed.category);
+        url.searchParams.set("lat", String(geo.lat));
+        url.searchParams.set("lng", String(geo.lng));
+        url.searchParams.set("loc", parsed.location);
+        url.searchParams.set("radius", String(parsed.radiusMiles ?? NEARBY_RADIUS_MILES));
+        router.push(url.pathname + url.search);
+        return;
+      }
+      // Couldn't geocode the location - fall through to a plain,
+      // nationwide category search rather than losing the category too.
+    }
+
+    // "Castles" on its own - every castle in the UK & Ireland.
     if (parsed.category) {
-      const url = new URL(`/category/${encodeURIComponent(parsed.category)}`, window.location.origin);
-      if (parsed.location) url.searchParams.set("loc", parsed.location);
-      if (parsed.radiusMiles) url.searchParams.set("radius", String(parsed.radiusMiles));
-      router.push(url.pathname + url.search);
+      router.push(`/map?category=${encodeURIComponent(parsed.category)}`);
       return;
     }
 
@@ -105,7 +135,12 @@ export default function DiscoverHome({ bucketList, hiddenGems, greatViews }: Pro
       const geo = await geocodeLocation(parsed.location);
       setSearchBusy(false);
       if (geo) {
-        router.push(`/map?lat=${geo.lat}&lng=${geo.lng}&radius=${parsed.radiusMiles ?? NEARBY_RADIUS_MILES}`);
+        const url = new URL("/map", window.location.origin);
+        url.searchParams.set("lat", String(geo.lat));
+        url.searchParams.set("lng", String(geo.lng));
+        url.searchParams.set("loc", parsed.location);
+        url.searchParams.set("radius", String(parsed.radiusMiles ?? NEARBY_RADIUS_MILES));
+        router.push(url.pathname + url.search);
         return;
       }
       router.push(`/map?q=${encodeURIComponent(value)}`);

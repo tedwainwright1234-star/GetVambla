@@ -45,11 +45,6 @@ export const NEARBY_COLLECTIONS: CollectionDef[] = [
     matches: (p) => p.category === "Ruin",
   },
   {
-    key: "free",
-    title: "Free places nearby",
-    matches: (p) => p.cost?.toLowerCase() === "free",
-  },
-  {
     key: "scenic",
     title: "Scenic places nearby",
     matches: (p) => !!p.experienceCollections?.toLowerCase().includes("great views"),

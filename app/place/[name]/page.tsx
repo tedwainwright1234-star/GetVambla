@@ -77,7 +77,7 @@ export default async function PlaceDetailPage({ params }: { params: Promise<{ na
           {hasValidCoords && <DirectionsButton lat={place.lat} lng={place.lng} />}
           {hasValidCoords && (
             <Link
-              href={`/map?q=${encodeURIComponent(place.name)}`}
+              href={`/map?place=${encodeURIComponent(place.name)}`}
               style={{ display: "inline-flex", alignItems: "center", padding: "9px 14px", borderRadius: 7, border: "1.5px solid var(--moor)", color: "var(--moor)", textDecoration: "none", fontSize: 13, fontWeight: 600 }}
             >
               Show on map

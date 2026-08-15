@@ -62,7 +62,7 @@ export default function PlaceQuickViewModal({ place, onClose }: Props) {
             {hasValidCoords && <DirectionsButton lat={place.lat} lng={place.lng} label="Get Directions" />}
             {hasValidCoords && (
               <button
-                onClick={() => router.push(`/map?q=${encodeURIComponent(place.name)}`)}
+                onClick={() => router.push(`/map?place=${encodeURIComponent(place.name)}`)}
                 style={{ flex: 1, minWidth: 120, background: "var(--ochre)", color: "var(--ink)", border: "none", padding: "11px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}
               >
                 Show on Map

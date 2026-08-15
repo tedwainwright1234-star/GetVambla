@@ -39,6 +39,10 @@ create index places_category_idx on places (category);
 
 -- RPC: places within radius_km of (lat,lng) - powers "Explore Near Me" and
 -- the radius selector (5/10/20/30/50/100 miles -> convert to km when calling)
+-- category_filter can be a single category ("Castle") or a comma-separated
+-- list ("Castle,Ruin,Historic Pub") to support multi-category search -
+-- string_to_array on a single value still produces a one-item array, so
+-- this is fully backward compatible with existing single-category calls.
 create or replace function nearby_places(
   center_lat double precision,
   center_lng double precision,
@@ -58,14 +62,15 @@ as $$
       ST_SetSRID(ST_MakePoint(center_lng, center_lat), 4326)::geography,
       radius_km * 1000
     )
-    and (category_filter is null or category = category_filter)
+    and (category_filter is null or category = ANY(string_to_array(category_filter, ',')))
     and (editorial_review is null or editorial_review != 'Remove')
   order by location <-> ST_SetSRID(ST_MakePoint(center_lng, center_lat), 4326)::geography
   limit limit_count;
 $$;
 
 -- RPC: what's in the visible map area (used when panning/zooming rather
--- than a fixed radius)
+-- than a fixed radius). category_filter supports the same comma-separated
+-- multi-category list as nearby_places above.
 create or replace function places_in_bounds(
   min_lat double precision,
   min_lng double precision,
@@ -83,7 +88,7 @@ as $$
   where
     lat between min_lat and max_lat
     and lng between min_lng and max_lng
-    and (category_filter is null or category = category_filter)
+    and (category_filter is null or category = ANY(string_to_array(category_filter, ',')))
     and (editorial_review is null or editorial_review != 'Remove')
   limit limit_count;
 $$;

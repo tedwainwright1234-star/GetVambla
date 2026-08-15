@@ -1,0 +1,14 @@
+/**
+ * Fisher-Yates shuffle. Returns a new array - never mutates the input.
+ * Used anywhere we want a fresh mix on each visit (e.g. the homepage's
+ * "nearby" collections, which are drawn from a nearest-first SQL result
+ * and would otherwise show the exact same places every time).
+ */
+export function shuffle<T>(arr: T[]): T[] {
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}

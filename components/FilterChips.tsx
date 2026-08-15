@@ -2,10 +2,14 @@
 
 type Props = {
   categories: string[];
-  active: string;
-  onSelect: (cat: string) => void;
+  active: string[]; // empty array = "All"
+  onSelect: (cat: string) => void; // toggles the given category on/off ("All" clears everything)
 };
 
+// Multi-select: tap "All" to clear every category filter, or tap any
+// number of individual categories to combine them (e.g. Castles + Ruins
+// both shown at once). Each tap toggles that one category on or off -
+// the caller (Explorer) owns the actual add/remove logic.
 export default function FilterChips({ categories, active, onSelect }: Props) {
   return (
     <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid var(--line)" }}>
@@ -24,11 +28,12 @@ export default function FilterChips({ categories, active, onSelect }: Props) {
       </span>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
         {categories.map((cat) => {
-          const isActive = cat === active;
+          const isActive = cat === "All" ? active.length === 0 : active.includes(cat);
           return (
             <button
               key={cat}
               onClick={() => onSelect(cat)}
+              aria-pressed={isActive}
               style={{
                 fontFamily: "'Inter', sans-serif",
                 fontSize: 12,
