@@ -317,10 +317,15 @@ html, body {
 @media (max-width: 768px) {
   .vambla-place-card {
     position: fixed;
-    top: auto; left: 0; right: 0; bottom: 0;
+    /* Lifted clear of the fixed Map/List toggle bar below it (see
+       .mobile-toggle) - both are pinned to the bottom of the screen, so
+       without this offset the toggle bar's higher z-index sat over the
+       card's own bottom edge, cutting off the Directions/View Details
+       buttons living there. 48px matches the toggle bar's actual height. */
+    top: auto; left: 0; right: 0; bottom: 48px;
     width: 100%;
     max-width: 100%;
-    max-height: 68vh;
+    max-height: 60vh;
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -6px 24px rgba(28, 37, 48, 0.3);
   }
