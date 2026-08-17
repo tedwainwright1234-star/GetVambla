@@ -52,6 +52,45 @@ const userIcon = L.divIcon({
   iconAnchor: [7, 7],
 });
 
+// Shared between the clustered markers and the separately-rendered
+// focused marker (see the comment near MarkerClusterGroup below for why
+// the focused one lives outside the cluster group entirely).
+function renderPlaceMarker(
+  p: Place,
+  { onSelectPlace, selected = false, dimmed = false }: { onSelectPlace?: (place: Place) => void; selected?: boolean; dimmed?: boolean }
+) {
+  return (
+    <Marker
+      key={`${p.name}-${p.lat}-${p.lng}`}
+      position={[p.lat, p.lng]}
+      icon={iconForCategory(p.category, selected)}
+      opacity={dimmed && !selected ? 0.4 : 1}
+      eventHandlers={{ click: () => onSelectPlace?.(p) }}
+      zIndexOffset={selected ? 500 : 0}
+    >
+      <Tooltip direction="auto" offset={[10, 0]} opacity={1} className="vambla-hover-tooltip">
+        <div style={{ width: 180 }}>
+          {p.imageUrl && (
+            <img
+              src={p.imageUrl}
+              alt=""
+              style={{ width: "100%", height: 90, objectFit: "cover", borderRadius: 4, marginBottom: 6, display: "block" }}
+              loading="lazy"
+            />
+          )}
+          <div style={{ fontFamily: "'Bitter', serif", fontWeight: 700, fontSize: 13, whiteSpace: "normal" }}>{p.name}</div>
+          <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 9.5, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--moor-light)", margin: "2px 0 4px", whiteSpace: "normal" }}>
+            {p.category} · {p.county}{p.cost ? ` · ${p.cost}` : ""}
+          </div>
+          {p.whyInteresting && (
+            <div style={{ fontSize: 11.5, lineHeight: 1.35, color: "#3c4a3a", whiteSpace: "normal", wordWrap: "break-word" }}>{p.whyInteresting}</div>
+          )}
+        </div>
+      </Tooltip>
+    </Marker>
+  );
+}
+
 // Map style options. "Standard" is the default - see its comment below
 // for why it's CARTO rather than raw OSM tiles. Satellite and Hybrid both
 // use Esri's public tile services, which are free and keyless for light/
@@ -164,7 +203,7 @@ function MapController({ userLoc, focusedPlace, focusIntent, suppressRef }: Pick
   useEffect(() => {
     if (focusedPlace && focusIntent === "navigate") {
       suppressRef.current = true;
-      const zoom = 13;
+      const zoom = 15;
       const center = computeOffsetCenter(map, focusedPlace.lat, focusedPlace.lng, zoom);
       map.setView(center, zoom, { animate: true });
     }
@@ -358,38 +397,21 @@ function MapView({ places, userLoc, locationLabel, focusedPlace, focusIntent, ra
       )}
 
       <MarkerClusterGroup chunkedLoading maxClusterRadius={50}>
-        {validPlaces.map((p) => {
-          return (
-          <Marker
-            key={`${p.name}-${p.lat}-${p.lng}`}
-            position={[p.lat, p.lng]}
-            icon={iconForCategory(p.category, focusedPlace?.name === p.name)}
-            opacity={focusedPlace && focusedPlace.name !== p.name ? 0.4 : 1}
-            eventHandlers={{ click: () => onSelectPlace?.(p) }}
-            zIndexOffset={focusedPlace?.name === p.name ? 500 : 0}
-          >
-            <Tooltip direction="auto" offset={[10, 0]} opacity={1} className="vambla-hover-tooltip">
-              <div style={{ width: 180 }}>
-                {p.imageUrl && (
-                  <img
-                    src={p.imageUrl}
-                    alt=""
-                    style={{ width: "100%", height: 90, objectFit: "cover", borderRadius: 4, marginBottom: 6, display: "block" }}
-                    loading="lazy"
-                  />
-                )}
-                <div style={{ fontFamily: "'Bitter', serif", fontWeight: 700, fontSize: 13, whiteSpace: "normal" }}>{p.name}</div>
-                <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 9.5, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--moor-light)", margin: "2px 0 4px", whiteSpace: "normal" }}>
-                  {p.category} · {p.county}{p.cost ? ` · ${p.cost}` : ""}
-                </div>
-                {p.whyInteresting && (
-                  <div style={{ fontSize: 11.5, lineHeight: 1.35, color: "#3c4a3a", whiteSpace: "normal", wordWrap: "break-word" }}>{p.whyInteresting}</div>
-                )}
-              </div>
-            </Tooltip>
-          </Marker>
-        );})}
+        {validPlaces
+          .filter((p) => focusedPlace?.name !== p.name)
+          .map((p) => renderPlaceMarker(p, { onSelectPlace, dimmed: !!focusedPlace }))}
       </MarkerClusterGroup>
+
+      {/* The focused place is deliberately rendered OUTSIDE the cluster
+          group, as its own always-visible layer. Markers inside a
+          MarkerClusterGroup get absorbed into a cluster bubble once
+          zoomed out far enough, regardless of any "selected" styling -
+          rendering it separately guarantees it stays visible and
+          distinct as its own pin at any zoom level, exactly what makes
+          it possible to spot even after zooming out. */}
+      {focusedPlace && Number.isFinite(focusedPlace.lat) && Number.isFinite(focusedPlace.lng) && (
+        renderPlaceMarker(focusedPlace, { onSelectPlace, selected: true })
+      )}
 
       {userLoc && (
         <>
