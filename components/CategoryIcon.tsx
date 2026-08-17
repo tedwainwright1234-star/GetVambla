@@ -132,6 +132,40 @@ const ICONS: Record<string, IconDef> = {
     viewBox: "0 0 24 24",
     paths: ["M12 2c3.5 4 6 8 6 12a6 6 0 0 1-12 0c0-4 2.5-8 6-12z"],
   },
+
+  // --- Added for the Brussels dataset ---
+  Museum: {
+    viewBox: "0 0 24 24",
+    paths: ["M2 10L12 3l10 7v1H2z", "M4 11h3v9H4zM10.5 11h3v9h-3zM17 11h3v9h-3z", "M2 21h20v1H2z"],
+  },
+  Monument: {
+    viewBox: "0 0 24 24",
+    paths: ["M10 2h4l1 13h-6z", "M7 15h10l2 7H5z"],
+  },
+  Square: {
+    viewBox: "0 0 24 24",
+    paths: ["M3 3h18v18H3V3zm2 2v14h14V5H5z", "M9 9h6v6H9z"],
+  },
+  Palace: {
+    viewBox: "0 0 24 24",
+    paths: ["M12 2a3 3 0 0 1 3 3v2h3v3h-2v11H8V10H6V7h3V5a3 3 0 0 1 3-3z"],
+  },
+  "Historic Park": {
+    viewBox: "0 0 24 24",
+    paths: ["M12 2c2.5 3 4 6 4 9a4 4 0 1 1-8 0c0-3 1.5-6 4-9z", "M11 11h2v11h-2z", "M4 20h16v1H4z"],
+  },
+  "Historic Site": {
+    viewBox: "0 0 24 24",
+    paths: ["M6 2v20h2v-8h10l-3-3 3-3H8V2z"],
+  },
+  "Archaeological Site": {
+    viewBox: "0 0 24 24",
+    paths: ["M3 6h18v3H3z", "M5 11h14v10H5z", "M9 14h2v4H9zM13 14h2v4h-2z"],
+  },
+  "Historic Brewery": {
+    viewBox: "0 0 24 24",
+    paths: ["M6 4h12l1 4v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8z", "M4 8h16M4 13h16"],
+  },
 };
 
 const DEFAULT_ICON: IconDef = {

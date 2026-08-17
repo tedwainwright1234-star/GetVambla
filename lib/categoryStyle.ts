@@ -19,6 +19,19 @@ export const CATEGORY_COLORS: Record<string, string> = {
   Beach: "#EAB308",            // sandy yellow
   Viewpoint: "#0D9488",        // teal
 
+  // Added for the Brussels dataset - categories with no sensible match
+  // in the original UK/Ireland set. A few close variants (Abbey,
+  // Historic Bar, Cathedral, Basilica) were merged into existing
+  // categories instead of adding near-duplicates here.
+  Museum: "#4338CA",            // indigo
+  Monument: "#44403C",          // dark stone
+  Square: "#EA580C",            // orange (open plaza)
+  Palace: "#CA8A04",            // dark gold
+  "Historic Park": "#65A30D",   // lime green
+  "Historic Site": "#A8A29E",   // neutral grey (catch-all)
+  "Archaeological Site": "#92400E", // earthy brown (dig sites)
+  "Historic Brewery": "#9A3412",    // warm brown-orange
+
   // Natural Beauty subcategories - a family of green/blue/earth tones so
   // they read as clearly related on the map
   "Natural Beauty": "#16A34A",

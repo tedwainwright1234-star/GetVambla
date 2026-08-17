@@ -168,6 +168,14 @@ html, body {
   overflow: hidden;
 }
 .vambla-map-wrap { flex: 1; position: relative; }
+
+/* Leaflet's own default CSS leaves the map's touch-action as "pan-x
+   pan-y", which on some mobile browsers still lets a two-finger pinch on
+   the map ALSO trigger the browser's native page-zoom alongside
+   Leaflet's own zoom - momentarily shrinking/zooming the whole page
+   layout rather than just the map. Overriding to "none" hands pinch
+   gestures on the map exclusively to Leaflet's JS zoom handler. */
+.leaflet-container { touch-action: none; }
 .mobile-toggle { display: none; }
 
 /* ---------- shared navigation ---------- */

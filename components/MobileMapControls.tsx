@@ -17,6 +17,7 @@ type Props = {
   onClearLocation: () => void;
   focusedPlaceName?: string | null;
   onClearFocusedPlace?: () => void;
+  searchError?: string | null;
 };
 
 // Only rendered/visible on mobile (see .vambla-mobile-map-controls in
@@ -26,7 +27,7 @@ export default function MobileMapControls({
   searchValue, onSearchChange, onSearchSubmit,
   categories, activeCategories, onToggleCategory,
   locationLabel, radiusMiles, onChangeRadius, onClearLocation,
-  focusedPlaceName, onClearFocusedPlace,
+  focusedPlaceName, onClearFocusedPlace, searchError,
 }: Props) {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -67,10 +68,10 @@ export default function MobileMapControls({
             id="mobile-map-search"
             value={local}
             onChange={(e) => handleChange(e.target.value)}
-            placeholder="Search, or 'castles in York'…"
+            placeholder="Search for your next adventure…"
             style={{
               width: "100%", padding: "10px 12px", borderRadius: 8, border: "none",
-              fontSize: 13, fontFamily: "'Inter', sans-serif", outline: "none",
+              fontSize: 16, fontFamily: "'Inter', sans-serif", outline: "none",
               boxShadow: "0 2px 8px rgba(28,37,48,.25)",
             }}
           />
@@ -90,6 +91,12 @@ export default function MobileMapControls({
           Filters {activeCategories.length > 0 ? `(${activeCategories.length})` : ""}
         </button>
       </div>
+
+      {searchError && (
+        <p style={{ margin: "6px 2px 0", fontSize: 12, fontFamily: "'Nunito', sans-serif", color: "#fff", background: "rgba(28,37,48,.85)", padding: "6px 10px", borderRadius: 6 }}>
+          {searchError}
+        </p>
+      )}
 
       {/* Airbnb-style removable pills for whatever's currently active -
           this is what was missing on mobile: previously the only way to
@@ -114,6 +121,7 @@ export default function MobileMapControls({
             categories={categories}
             active={activeCategories}
             onSelect={onToggleCategory}
+            defaultOpen
           />
         </div>
       )}

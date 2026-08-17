@@ -32,13 +32,20 @@ const MapView = dynamic(() => import("./MapView"), {
   ),
 });
 
-// Matches the 16 categories in your enriched dataset. Always shown in
-// full in the picker (not narrowed to "what's currently on screen") so
-// you can always add a category that isn't visible in the current view.
+// Matches the categories in your enriched dataset. Always shown in full
+// in the picker (not narrowed to "what's currently on screen") so you
+// can always add a category that isn't visible in the current view.
+// Includes the Brussels-dataset additions (Museum, Monument, Square,
+// Palace, Historic Park, Historic Site, Archaeological Site, Historic
+// Brewery) - a few close variants (Abbey, Historic Bar, Cathedral,
+// Basilica) were merged into existing categories instead of adding
+// near-duplicates, see lib/categoryStyle.ts for the full mapping notes.
 const ALL_CATEGORIES = [
   "All", "Castle", "Ruin", "Historic Pub", "Stately Home", "Historic Building",
   "Abbey/Priory", "Church", "Fort", "Roman History", "Bridge", "Lighthouse",
   "Windmill", "Stone Circle", "Natural Beauty", "Beach", "Viewpoint",
+  "Museum", "Monument", "Square", "Palace", "Historic Park", "Historic Site",
+  "Archaeological Site", "Historic Brewery",
 ];
 
 export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) {
@@ -74,6 +81,7 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
   const [searchResults, setSearchResults] = useState<Place[]>([]);
   const [mobilePane, setMobilePane] = useState<"map" | "list">("map");
   const lastBounds = useRef<Bounds | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   // Category-driven results (no location set) and location-driven results
   // both bypass "what's in the current viewport" - they own the result
@@ -262,6 +270,7 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
   async function handleSearchSubmit(value: string) {
     const query = value.trim();
     if (!query) return;
+    setSearchError(null);
 
     const exact = await findExactPlaceMatch(query);
     if (exact) {
@@ -286,8 +295,10 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
         setSearchQuery("");
         return;
       }
-      // Couldn't geocode it - fall through and leave the live name-search
-      // results as they are, rather than silently doing nothing.
+      // Couldn't geocode it - make that visible rather than silently
+      // leaving whatever was previously on screen, which read as "my
+      // search did nothing" or "it's ignoring what I typed".
+      setSearchError(`Couldn't find "${parsed.location}" - try a different spelling, or a nearby town.`);
       return;
     }
 
@@ -320,6 +331,11 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
       <div className="vambla-main">
         <aside className={`vambla-sidebar ${mobilePane === "map" ? "hidden-mobile" : ""}`}>
           <SearchBar value={searchQuery} onChange={setSearchQuery} onSubmit={handleSearchSubmit} />
+          {searchError && (
+            <p style={{ margin: "0 16px 8px", fontSize: 12.5, fontFamily: "'Nunito', sans-serif", color: "var(--brick, #B45309)" }}>
+              {searchError}
+            </p>
+          )}
           <ActiveFilters
             categories={activeCategories}
             locationLabel={locationLabel}
@@ -362,6 +378,7 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
             onClearLocation={clearLocation}
             focusedPlaceName={focusedPlace?.name ?? null}
             onClearFocusedPlace={clearFocusedPlace}
+            searchError={searchError}
           />
           <MapView
             places={displayPlaces}

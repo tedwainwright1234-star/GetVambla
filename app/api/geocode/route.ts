@@ -10,11 +10,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing query" }, { status: 400 });
   }
 
+  // No countrycodes restriction - the dataset now covers more than just
+  // the UK & Ireland (Belgium/Brussels), so search needs to be able to
+  // geocode anywhere. If you add data from a specific new country and
+  // want to bias results toward it without excluding everywhere else,
+  // Nominatim's countrycodes param can take a comma-separated list
+  // rather than being removed entirely.
   const url = `https://nominatim.openstreetmap.org/search?${new URLSearchParams({
     q: query,
     format: "json",
     limit: "1",
-    countrycodes: "gb,ie",
   })}`;
 
   try {

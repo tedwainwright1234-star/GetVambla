@@ -48,14 +48,14 @@ export default function SearchBar({ value, onChange, onSubmit }: Props) {
         <input
           id="map-search"
           type="text"
-          placeholder="Search, or try 'castles in York'…"
+          placeholder="Search for your next adventure…"
           value={local}
           onChange={(e) => handleChange(e.target.value)}
           style={{
             width: "100%",
             padding: "10px 12px",
             fontFamily: "'Inter', sans-serif",
-            fontSize: 13,
+            fontSize: 16,
             border: "1.5px solid var(--moor)",
             borderRadius: 4,
             background: "#fff",

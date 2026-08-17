@@ -13,9 +13,6 @@ export default function Header({ onLocate }: Props) {
         <Link href="/" style={{ display: "flex", alignItems: "center", flexShrink: 0 }} aria-label="Vambla home">
           <img src="/vambla-icon.png" alt="Vambla" className="vambla-map-header-logo" style={{ height: 38, width: "auto" }} />
         </Link>
-        <span className="vambla-map-header-tagline">
-          Nearby Wonders — UK &amp; Ireland
-        </span>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>

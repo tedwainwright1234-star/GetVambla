@@ -165,10 +165,10 @@ export default function DiscoverHome({ bucketList, hiddenGems, greatViews }: Pro
             id="vambla-search"
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
-            placeholder="Try 'castles in North Yorkshire' or 'Bath'…"
+            placeholder="Search for your next adventure…"
             style={{
               width: "100%", padding: "13px 16px", borderRadius: 30, border: "none",
-              fontSize: 14, fontFamily: "'Inter', sans-serif", outline: "none",
+              fontSize: 16, fontFamily: "'Inter', sans-serif", outline: "none",
             }}
           />
         </form>

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "vambla — nearby wonders",
-  description: "Discover historical and natural wonders near you across the UK & Ireland.",
+  title: "Vambla - Nearby Wonders",
+  description: "Discover remarkable historical and natural places near you.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

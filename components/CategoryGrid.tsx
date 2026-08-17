@@ -8,6 +8,8 @@ const CATEGORIES = [
   "Castle", "Ruin", "Historic Pub", "Stately Home", "Abbey/Priory",
   "Waterfall", "Beach", "Viewpoint", "Lighthouse", "Stone Circle",
   "Fort", "Windmill", "Church", "Historic Building", "Bridge", "Roman History",
+  "Museum", "Monument", "Square", "Palace", "Historic Park", "Historic Site",
+  "Archaeological Site", "Historic Brewery",
 ];
 
 export default function CategoryGrid() {
