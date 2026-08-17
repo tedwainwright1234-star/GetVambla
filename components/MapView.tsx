@@ -59,6 +59,12 @@ function renderPlaceMarker(
   p: Place,
   { onSelectPlace, selected = false, dimmed = false }: { onSelectPlace?: (place: Place) => void; selected?: boolean; dimmed?: boolean }
 ) {
+  // Touch devices report "no hover" - on those, tapping a marker was
+  // triggering this small preview AND the full PlaceDetailCard at once,
+  // since a tap gets treated as a mouseover too. Devices with real
+  // pointer hover (desktop/trackpad) keep the small preview as before.
+  const supportsHover = typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches;
+
   return (
     <Marker
       key={`${p.name}-${p.lat}-${p.lng}`}
@@ -68,25 +74,27 @@ function renderPlaceMarker(
       eventHandlers={{ click: () => onSelectPlace?.(p) }}
       zIndexOffset={selected ? 500 : 0}
     >
-      <Tooltip direction="auto" offset={[10, 0]} opacity={1} className="vambla-hover-tooltip">
-        <div style={{ width: 180 }}>
-          {p.imageUrl && (
-            <img
-              src={p.imageUrl}
-              alt=""
-              style={{ width: "100%", height: 90, objectFit: "cover", borderRadius: 4, marginBottom: 6, display: "block" }}
-              loading="lazy"
-            />
-          )}
-          <div style={{ fontFamily: "'Bitter', serif", fontWeight: 700, fontSize: 13, whiteSpace: "normal" }}>{p.name}</div>
-          <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 9.5, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--moor-light)", margin: "2px 0 4px", whiteSpace: "normal" }}>
-            {p.category} · {p.county}{p.cost ? ` · ${p.cost}` : ""}
+      {supportsHover && (
+        <Tooltip direction="auto" offset={[10, 0]} opacity={1} className="vambla-hover-tooltip">
+          <div style={{ width: 180 }}>
+            {p.imageUrl && (
+              <img
+                src={p.imageUrl}
+                alt=""
+                style={{ width: "100%", height: 90, objectFit: "cover", borderRadius: 4, marginBottom: 6, display: "block" }}
+                loading="lazy"
+              />
+            )}
+            <div style={{ fontFamily: "'Bitter', serif", fontWeight: 700, fontSize: 13, whiteSpace: "normal" }}>{p.name}</div>
+            <div style={{ fontFamily: "'Nunito', sans-serif", fontSize: 9.5, letterSpacing: 0.5, textTransform: "uppercase", color: "var(--moor-light)", margin: "2px 0 4px", whiteSpace: "normal" }}>
+              {p.category} · {p.county}{p.cost ? ` · ${p.cost}` : ""}
+            </div>
+            {p.whyInteresting && (
+              <div style={{ fontSize: 11.5, lineHeight: 1.35, color: "#3c4a3a", whiteSpace: "normal", wordWrap: "break-word" }}>{p.whyInteresting}</div>
+            )}
           </div>
-          {p.whyInteresting && (
-            <div style={{ fontSize: 11.5, lineHeight: 1.35, color: "#3c4a3a", whiteSpace: "normal", wordWrap: "break-word" }}>{p.whyInteresting}</div>
-          )}
-        </div>
-      </Tooltip>
+        </Tooltip>
+      )}
     </Marker>
   );
 }
@@ -168,7 +176,7 @@ type Props = {
   // clicks must never change zoom).
   focusIntent: "navigate" | "select";
   radiusMiles: number | null; // null = "Anywhere", no circle drawn
-  onBoundsChange: (bounds: Bounds) => void;
+  onBoundsChange: (bounds: Bounds, wasDrag: boolean) => void;
   onSelectPlace?: (place: Place) => void;
   onCloseFocused?: () => void;
 };
@@ -230,10 +238,22 @@ function MapController({ userLoc, focusedPlace, focusIntent, suppressRef }: Pick
 // selecting a place, "return to my location") are deliberately excluded
 // via suppressRef - only moves the user actually initiated by dragging/
 // scrolling/pinching the map count as "browse this new area".
-function BoundsWatcher({ onBoundsChange, suppressRef }: { onBoundsChange: (b: Bounds) => void; suppressRef: React.MutableRefObject<boolean> }) {
+function BoundsWatcher({ onBoundsChange, suppressRef }: { onBoundsChange: (b: Bounds, wasDrag: boolean) => void; suppressRef: React.MutableRefObject<boolean> }) {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Zooming (scroll wheel, pinch, +/- buttons) fires the exact same
+  // "moveend" event as actually dragging the map - without this,
+  // zooming out on an active location search looked identical to
+  // panning away from it, and was incorrectly clearing the search/radius
+  // just from zooming. Only a genuine drag should count as "the user
+  // wants to browse a different area" - see handleBoundsChange in
+  // Explorer.tsx, which uses this to decide whether to break out of an
+  // active location/category search.
+  const draggedSinceReportRef = useRef(false);
 
   const report = (map: L.Map) => {
+    const wasDrag = draggedSinceReportRef.current;
+    draggedSinceReportRef.current = false;
+
     if (suppressRef.current) {
       // This settling was from our own programmatic move (a search
       // resolving, a place selection, "return to my location") - not a
@@ -244,16 +264,22 @@ function BoundsWatcher({ onBoundsChange, suppressRef }: { onBoundsChange: (b: Bo
       return;
     }
     const b = map.getBounds();
-    onBoundsChange({
-      minLat: b.getSouth(),
-      minLng: b.getWest(),
-      maxLat: b.getNorth(),
-      maxLng: b.getEast(),
-    });
+    onBoundsChange(
+      {
+        minLat: b.getSouth(),
+        minLng: b.getWest(),
+        maxLat: b.getNorth(),
+        maxLng: b.getEast(),
+      },
+      wasDrag
+    );
   };
 
   const map = useMapEvents({
     load: () => report(map),
+    dragend: () => {
+      draggedSinceReportRef.current = true;
+    },
     moveend: () => {
       // A much longer debounce (900ms) than before - this only fires once
       // the map has genuinely settled after you stop panning/zooming, not
@@ -376,8 +402,8 @@ function MapView({ places, userLoc, locationLabel, focusedPlace, focusIntent, ra
   const visibleCategories = Array.from(new Set(validPlaces.map((p) => p.category))).sort();
   const tile = TILE_LAYERS[mapStyle];
 
-  function handleBoundsChangeWrapped(b: Bounds) {
-    onBoundsChange(b);
+  function handleBoundsChangeWrapped(b: Bounds, wasDrag: boolean) {
+    onBoundsChange(b, wasDrag);
   }
 
   return (

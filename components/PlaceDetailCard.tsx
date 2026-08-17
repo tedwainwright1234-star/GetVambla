@@ -26,8 +26,9 @@ export default function PlaceDetailCard({ place, userLoc, onClose }: Props) {
   return (
     <div className="vambla-place-card" role="dialog" aria-label={place.name}>
       <div
+        className="vambla-place-card-image"
         style={{
-          height: 170, flexShrink: 0, position: "relative", overflow: "hidden",
+          flexShrink: 0, position: "relative", overflow: "hidden",
           background: place.imageUrl ? "#000" : `linear-gradient(135deg, ${color}dd, ${color}99)`,
           display: "flex", alignItems: "center", justifyContent: "center",
         }}
@@ -51,7 +52,7 @@ export default function PlaceDetailCard({ place, userLoc, onClose }: Props) {
         </button>
       </div>
 
-      <div style={{ padding: 18, overflowY: "auto", flex: 1 }}>
+      <div className="vambla-place-card-body" style={{ padding: 18, overflowY: "auto", flex: 1 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
           <div>
             <div style={{ fontFamily: "'Bitter', serif", fontWeight: 800, fontSize: 20, color: "var(--ink)" }}>{place.name}</div>

@@ -11,9 +11,10 @@ type Props = {
   userLoc: { lat: number; lng: number } | null;
   onClose: () => void;
   onAnother: () => void;
+  onShowOnMap: () => void;
 };
 
-export default function SurpriseMeModal({ place, userLoc, onClose, onAnother }: Props) {
+export default function SurpriseMeModal({ place, userLoc, onClose, onAnother, onShowOnMap }: Props) {
   const color = colorForCategory(place.category);
   const distanceMiles = userLoc ? kmToMiles(haversineKm(userLoc.lat, userLoc.lng, place.lat, place.lng)) : null;
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`;
@@ -60,18 +61,24 @@ export default function SurpriseMeModal({ place, userLoc, onClose, onAnother }: 
             <p style={{ fontSize: 14, lineHeight: 1.5, color: "#3c4a3a", margin: "14px 0" }}>{place.whyInteresting}</p>
           )}
 
-          <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+          <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
             <a
               href={directionsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ flex: 1, textAlign: "center", background: "var(--moor)", color: "#fff", padding: "11px 0", borderRadius: 8, textDecoration: "none", fontWeight: 600, fontSize: 13 }}
+              style={{ flex: 1, minWidth: 100, textAlign: "center", background: "var(--moor)", color: "#fff", padding: "11px 0", borderRadius: 8, textDecoration: "none", fontWeight: 600, fontSize: 13 }}
             >
               Get Directions
             </a>
             <button
+              onClick={onShowOnMap}
+              style={{ flex: 1, minWidth: 100, background: "transparent", color: "var(--moor)", border: "1.5px solid var(--moor)", padding: "10px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+            >
+              Show on Map
+            </button>
+            <button
               onClick={onAnother}
-              style={{ flex: 1, background: "var(--ochre)", color: "var(--ink)", border: "none", padding: "11px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+              style={{ flex: 1, minWidth: 100, background: "var(--ochre)", color: "var(--ink)", border: "none", padding: "11px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer" }}
             >
               🎲 Another
             </button>

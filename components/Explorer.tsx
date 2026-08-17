@@ -97,16 +97,21 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
   // "return to my location") never reach here - see suppressRef in
   // MapView.tsx - so every call here really is the person moving the map.
   const handleBoundsChange = useCallback(
-    (bounds: Bounds) => {
+    (bounds: Bounds, wasDrag: boolean) => {
       lastBounds.current = bounds;
 
       if (!viewportBrowsing) {
-        // Was anchored to a location or nationwide category search -
-        // start following the map instead. Any active category filter
-        // stays applied, just scoped to the new area rather than
-        // nationwide/a fixed radius. The fetch effect below picks this
-        // up automatically since viewportBrowsing/userLoc are changing,
-        // and it'll read the fresh lastBounds set just above.
+        // Anchored to a location/nationwide category search. Zooming
+        // (even zooming all the way out) must never clear this - the
+        // radius circle should stay put regardless of zoom level, and
+        // only an actual drag to a different area, or explicitly
+        // tapping the location pill's ✕, should end the search.
+        if (!wasDrag) return;
+        // A genuine drag - start following the map instead. Any active
+        // category filter stays applied, just scoped to the new area
+        // rather than nationwide/a fixed radius. The fetch effect below
+        // picks this up automatically since viewportBrowsing/userLoc are
+        // changing, and it'll read the fresh lastBounds set just above.
         setViewportBrowsing(true);
         setUserLoc(null);
         setLocationLabel(null);
@@ -115,7 +120,8 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
 
       // Already following the viewport - lastBounds is a ref, so
       // changing it alone wouldn't retrigger the effect below, hence the
-      // direct fetch here.
+      // direct fetch here. This runs for both drags and zooms, since
+      // either genuinely changes what's currently in view.
       (async () => {
         setLoading(true);
         const places = await getPlacesInBounds(bounds, activeCategories.length ? activeCategories : null);
@@ -231,7 +237,10 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
     handledInitialPlaceParam.current = true;
     (async () => {
       const match = (await getPlaceByName(initialPlaceParam)) ?? (await findExactPlaceMatch(initialPlaceParam));
-      if (match) navigateToPlace(match);
+      if (match) {
+        setViewportBrowsing(false);
+        navigateToPlace(match);
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -305,6 +314,7 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
 
     const exact = await findExactPlaceMatch(query);
     if (exact) {
+      setViewportBrowsing(false);
       navigateToPlace(exact);
       return;
     }
@@ -349,11 +359,20 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
   // show up as a pin and in the list - even if it happens to fall
   // outside the currently active category/location filters, since the
   // person explicitly asked for it by name.
+  // The focused place is only force-included when we're anchored to a
+  // deliberate search (location/nationwide-category) - it might
+  // legitimately fall outside that search's own filters, e.g. an exact
+  // place search result that doesn't match the active category. While
+  // plainly browsing the viewport (viewportBrowsing=true), forcing it in
+  // makes no sense and was the actual bug behind "Brussels list shows a
+  // London place" - a previously-focused place from anywhere would keep
+  // tagging along into every new area until its card was closed by hand.
   const displayPlaces = useMemo(() => {
     if (!focusedPlace) return viewportPlaces;
     if (viewportPlaces.some((p) => p.name === focusedPlace.name)) return viewportPlaces;
+    if (viewportBrowsing) return viewportPlaces;
     return [focusedPlace, ...viewportPlaces];
-  }, [viewportPlaces, focusedPlace]);
+  }, [viewportPlaces, focusedPlace, viewportBrowsing]);
 
   const listToShow = searchQuery.trim() ? searchResults : displayPlaces;
 

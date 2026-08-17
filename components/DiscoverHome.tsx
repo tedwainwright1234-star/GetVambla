@@ -229,6 +229,7 @@ export default function DiscoverHome({ bucketList, hiddenGems, greatViews }: Pro
           userLoc={userLoc}
           onClose={() => setSurprisePlace(null)}
           onAnother={handleSurpriseMe}
+          onShowOnMap={() => router.push(`/map?place=${encodeURIComponent(surprisePlace.name)}`)}
         />
       )}
       {surpriseLoading && !surprisePlace && (
