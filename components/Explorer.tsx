@@ -82,23 +82,50 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
   const [mobilePane, setMobilePane] = useState<"map" | "list">("map");
   const lastBounds = useRef<Bounds | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
+  // true = results follow whatever's currently on screen as you pan the
+  // map. false = results are anchored to a location search (radius) or a
+  // nationwide category search, regardless of where you've since panned.
+  // This is what makes "look at a different area while a search is
+  // active" actually show that area - see handleBoundsChange below.
+  const [viewportBrowsing, setViewportBrowsing] = useState(!initialUserLoc && activeCategories.length === 0);
 
-  // Category-driven results (no location set) and location-driven results
-  // both bypass "what's in the current viewport" - they own the result
-  // set outright. Plain browsing (no filters at all) is the only case
-  // that's tied to the map's viewport.
+  // Category-driven and location-driven results own the result set
+  // outright UNTIL the person genuinely pans/zooms the map themselves -
+  // at that point browsing should follow wherever they've moved to,
+  // same as most map apps, rather than staying stuck on the original
+  // search. Programmatic moves (a search resolving, selecting a place,
+  // "return to my location") never reach here - see suppressRef in
+  // MapView.tsx - so every call here really is the person moving the map.
   const handleBoundsChange = useCallback(
-    async (bounds: Bounds) => {
-      if (userLoc || activeCategories.length > 0) return;
+    (bounds: Bounds) => {
       lastBounds.current = bounds;
-      setLoading(true);
-      const places = await getPlacesInBounds(bounds, null);
-      if (lastBounds.current === bounds) {
-        setViewportPlaces(places);
-        setLoading(false);
+
+      if (!viewportBrowsing) {
+        // Was anchored to a location or nationwide category search -
+        // start following the map instead. Any active category filter
+        // stays applied, just scoped to the new area rather than
+        // nationwide/a fixed radius. The fetch effect below picks this
+        // up automatically since viewportBrowsing/userLoc are changing,
+        // and it'll read the fresh lastBounds set just above.
+        setViewportBrowsing(true);
+        setUserLoc(null);
+        setLocationLabel(null);
+        return;
       }
+
+      // Already following the viewport - lastBounds is a ref, so
+      // changing it alone wouldn't retrigger the effect below, hence the
+      // direct fetch here.
+      (async () => {
+        setLoading(true);
+        const places = await getPlacesInBounds(bounds, activeCategories.length ? activeCategories : null);
+        if (lastBounds.current === bounds) {
+          setViewportPlaces(places);
+          setLoading(false);
+        }
+      })();
     },
-    [userLoc, activeCategories]
+    [viewportBrowsing, activeCategories]
   );
 
   const fetchRequestId = useRef(0);
@@ -107,23 +134,26 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
     (async () => {
       let places: Place[] | null = null;
 
-      if (userLoc) {
+      if (!viewportBrowsing && userLoc) {
         // A location is active - radius drives the results (or "Anywhere"
         // if the radius has been cleared to unlimited).
         setLoading(true);
         places = radiusMiles === null
           ? await getPlacesInBounds(WORLD_BOUNDS, activeCategories)
           : await getPlacesNearby(userLoc, radiusMiles, activeCategories);
-      } else if (activeCategories.length > 0) {
+      } else if (!viewportBrowsing && activeCategories.length > 0) {
         // Category chosen, no location - show it everywhere (UK &
         // Ireland), not just whatever happens to be in view. This is
-        // what makes typing/tapping "Castle" show every castle.
+        // what makes typing/tapping "Castle" show every castle - unless
+        // you've since panned the map, in which case viewportBrowsing is
+        // already true and this branch is skipped (see below instead).
         setLoading(true);
         places = await getPlacesByCategories(activeCategories);
       } else if (lastBounds.current) {
-        // No filters at all - plain viewport browsing.
+        // Following the viewport - either no filters at all, or a
+        // category filter scoped to whatever's currently in view.
         setLoading(true);
-        places = await getPlacesInBounds(lastBounds.current, null);
+        places = await getPlacesInBounds(lastBounds.current, activeCategories.length ? activeCategories : null);
       }
 
       // Only the MOST RECENT request is allowed to commit its result -
@@ -135,7 +165,7 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
         setLoading(false);
       }
     })();
-  }, [userLoc, radiusMiles, activeCategories]);
+  }, [viewportBrowsing, userLoc, radiusMiles, activeCategories]);
 
   // Live name-search-as-you-type. SearchBar/MobileMapControls already
   // debounce keystrokes locally before calling onChange, so this can run
@@ -162,6 +192,7 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
         setFocusedPlace(null);
         setLocationLabel("your location");
         setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setViewportBrowsing(false);
       },
       () => alert("Could not get your location — try browsing the map instead.")
     );
@@ -292,6 +323,7 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
         setUserLoc({ lat: geo.lat, lng: geo.lng });
         setLocationLabel(parsed.location);
         setRadiusMiles(parsed.radiusMiles ?? radiusMiles ?? 20);
+        setViewportBrowsing(false);
         setSearchQuery("");
         return;
       }
@@ -306,6 +338,7 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
       // Category only, no location - go nationwide and drop any location
       // filter that might have been active from an earlier search.
       clearLocation();
+      setViewportBrowsing(false);
       setSearchQuery("");
     }
     // Neither a category nor a location parsed - leave the existing live

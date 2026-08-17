@@ -134,7 +134,7 @@ type Props = {
   onCloseFocused?: () => void;
 };
 
-function MapController({ userLoc, focusedPlace, focusIntent }: Pick<Props, "userLoc" | "focusedPlace" | "focusIntent">) {
+function MapController({ userLoc, focusedPlace, focusIntent, suppressRef }: Pick<Props, "userLoc" | "focusedPlace" | "focusIntent"> & { suppressRef: React.MutableRefObject<boolean> }) {
   const map = useMap();
 
   // Only a genuine "navigate" (not a marker/list "select") ever changes
@@ -142,31 +142,45 @@ function MapController({ userLoc, focusedPlace, focusIntent }: Pick<Props, "user
   // the map out to fit a fixed level.
   useEffect(() => {
     if (focusedPlace && focusIntent === "navigate") {
+      suppressRef.current = true;
       map.setView([focusedPlace.lat, focusedPlace.lng], 13, { animate: true });
     }
-  }, [focusedPlace, focusIntent, map]);
+  }, [focusedPlace, focusIntent, map, suppressRef]);
 
   // A brand new location search (not a place selection, not closing a
   // card) recentres the map - this is the "Explore Near Me" / typed
   // location behaviour, unrelated to marker selection.
   useEffect(() => {
-    if (userLoc) map.setView([userLoc.lat, userLoc.lng], 10, { animate: true });
-  }, [userLoc, map]);
+    if (userLoc) {
+      suppressRef.current = true;
+      map.setView([userLoc.lat, userLoc.lng], 10, { animate: true });
+    }
+  }, [userLoc, map, suppressRef]);
 
   return null;
 }
 
-// Reports the map's bounds ONLY on initial load - panning/zooming no
-// longer auto-fetches. This used to re-fetch and re-cluster up to 500
-// markers on every single pan/zoom (debounced only 250ms), which was
-// causing rapid memory growth during active map exploration. Now,
-// "Search this area" (below) is the only way to fetch a new viewport
-// after the first load - a deliberate, infrequent action instead of a
-// continuous one.
-function BoundsWatcher({ onBoundsChange }: { onBoundsChange: (b: Bounds) => void }) {
+// Reports the map's bounds on load, and again whenever the map settles
+// after a genuine pan/zoom (debounced 900ms so it only fires once
+// you've actually stopped moving, not on every incremental step of an
+// active drag - re-fetching on every step was what caused rapid memory
+// growth in an earlier version). Programmatic moves (a search resolving,
+// selecting a place, "return to my location") are deliberately excluded
+// via suppressRef - only moves the user actually initiated by dragging/
+// scrolling/pinching the map count as "browse this new area".
+function BoundsWatcher({ onBoundsChange, suppressRef }: { onBoundsChange: (b: Bounds) => void; suppressRef: React.MutableRefObject<boolean> }) {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const report = (map: L.Map) => {
+    if (suppressRef.current) {
+      // This settling was from our own programmatic move (a search
+      // resolving, a place selection, "return to my location") - not a
+      // genuine user pan/zoom, so it must not be treated as "the user
+      // wants to browse this new area" (see Explorer.tsx's
+      // handleBoundsChange, which uses exactly that distinction).
+      suppressRef.current = false;
+      return;
+    }
     const b = map.getBounds();
     onBoundsChange({
       minLat: b.getSouth(),
@@ -199,12 +213,15 @@ function BoundsWatcher({ onBoundsChange }: { onBoundsChange: (b: Bounds) => void
 
 // "Return to my location" button - only rendered when we actually have a
 // location to return to.
-function ReturnToLocationControl({ userLoc }: { userLoc: { lat: number; lng: number } | null }) {
+function ReturnToLocationControl({ userLoc, suppressRef }: { userLoc: { lat: number; lng: number } | null; suppressRef: React.MutableRefObject<boolean> }) {
   const map = useMap();
   if (!userLoc) return null;
   return (
     <button
-      onClick={() => map.setView([userLoc.lat, userLoc.lng], 11, { animate: true })}
+      onClick={() => {
+        suppressRef.current = true;
+        map.setView([userLoc.lat, userLoc.lng], 11, { animate: true });
+      }}
       aria-label="Return to my location"
       title="Return to my location"
       style={{
@@ -282,6 +299,11 @@ function StyleSwitcher({ style, onChange }: { style: MapStyle; onChange: (s: Map
 
 function MapView({ places, userLoc, locationLabel, focusedPlace, focusIntent, radiusMiles, onBoundsChange, onSelectPlace, onCloseFocused }: Props) {
   const [mapStyle, setMapStyle] = useState<MapStyle>("standard");
+  // Shared between MapController/BoundsWatcher/ReturnToLocationControl -
+  // true for the brief window after WE move the map ourselves, so the
+  // resulting "moveend" isn't mistaken for the user browsing to a new
+  // area. See BoundsWatcher's report() for where this is consumed.
+  const suppressNextBounds = useRef(false);
 
   // Data-safety guard: never attempt to render a marker for a place with
   // missing/invalid coordinates - it's silently excluded rather than
@@ -380,9 +402,9 @@ function MapView({ places, userLoc, locationLabel, focusedPlace, focusIntent, ra
         </>
       )}
 
-      <MapController userLoc={userLoc} focusedPlace={focusedPlace} focusIntent={focusIntent} />
-      <BoundsWatcher onBoundsChange={handleBoundsChangeWrapped} />
-      <ReturnToLocationControl userLoc={userLoc} />
+      <MapController userLoc={userLoc} focusedPlace={focusedPlace} focusIntent={focusIntent} suppressRef={suppressNextBounds} />
+      <BoundsWatcher onBoundsChange={handleBoundsChangeWrapped} suppressRef={suppressNextBounds} />
+      <ReturnToLocationControl userLoc={userLoc} suppressRef={suppressNextBounds} />
     </MapContainer>
     <StyleSwitcher style={mapStyle} onChange={setMapStyle} />
     <MapLegend categories={visibleCategories} />
