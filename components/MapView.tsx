@@ -191,12 +191,30 @@ function computeOffsetCenter(map: L.Map, lat: number, lng: number, zoom: number)
   if (typeof window === "undefined") return L.latLng(lat, lng);
   const isMobile = window.innerWidth <= 768;
   const targetPoint = map.project([lat, lng], zoom);
-  // Shifting the "fake" centre further into the card's own footprint
-  // (south for a bottom sheet, east for a right panel) makes the real
-  // target render on the opposite side - i.e. in the visible area.
-  const shift = isMobile
-    ? L.point(0, Math.min(window.innerHeight * 0.6, window.innerHeight - 120) / 2 + 24)
-    : L.point(Math.min(380, window.innerWidth * 0.92) / 2, 0);
+  const containerHeight = map.getSize().y;
+
+  if (!isMobile) {
+    // Desktop: shift the "fake" centre east, into the side panel's own
+    // footprint, so the real target renders to the left of it instead.
+    const shift = L.point(Math.min(380, window.innerWidth * 0.92) / 2, 0);
+    return map.unproject(targetPoint.add(shift), zoom);
+  }
+
+  // Mobile: the map is sandwiched between the search/filter controls
+  // overlaying the TOP of the screen and the place card sheet at the
+  // BOTTOM - the target needs to land in the middle of whatever's left
+  // between the two, not just "the top half of the whole screen" (which
+  // used to land it half-covered by the search bar). The controls' own
+  // height varies with how many filter pills are currently showing, so
+  // it's measured directly rather than guessed.
+  const controlsEl = document.querySelector(".vambla-mobile-map-controls");
+  const topOffsetPx = controlsEl ? controlsEl.getBoundingClientRect().bottom + 8 : 130;
+  // Matches .vambla-place-card's actual mobile CSS: max-height 46vh,
+  // lifted 48px clear of the Map/List toggle bar.
+  const cardHeightPx = Math.min(window.innerHeight * 0.46, window.innerHeight - 120) + 48;
+  const visibleBottom = containerHeight - cardHeightPx;
+  const desiredScreenY = topOffsetPx + Math.max(0, visibleBottom - topOffsetPx) / 2;
+  const shift = L.point(0, containerHeight / 2 - desiredScreenY);
   return map.unproject(targetPoint.add(shift), zoom);
 }
 
