@@ -217,6 +217,21 @@ function MapController({ userLoc, focusedPlace, focusIntent, suppressRef }: Pick
     }
   }, [focusedPlace, focusIntent, map, suppressRef]);
 
+  // A marker/list "select" - unlike "navigate", this must NEVER change
+  // the zoom level. It still needs to pan though: the place card is
+  // about to open and cover part of the screen, so without this the
+  // clicked marker could end up hidden right behind it. panTo (not
+  // setView) keeps the current zoom exactly as-is and just recentres so
+  // the icon lands in the middle of whatever's actually still visible.
+  useEffect(() => {
+    if (focusedPlace && focusIntent === "select") {
+      suppressRef.current = true;
+      const zoom = map.getZoom();
+      const center = computeOffsetCenter(map, focusedPlace.lat, focusedPlace.lng, zoom);
+      map.panTo(center, { animate: true });
+    }
+  }, [focusedPlace, focusIntent, map, suppressRef]);
+
   // A brand new location search (not a place selection, not closing a
   // card) recentres the map - this is the "Explore Near Me" / typed
   // location behaviour, unrelated to marker selection.
