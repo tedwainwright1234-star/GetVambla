@@ -325,7 +325,7 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
   const listToShow = searchQuery.trim() ? searchResults : displayPlaces;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
+    <div className="vambla-map-page">
       <Header onLocate={handleLocate} />
 
       <div className="vambla-main">

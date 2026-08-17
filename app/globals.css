@@ -178,6 +178,43 @@ html, body {
 .leaflet-container { touch-action: none; }
 .mobile-toggle { display: none; }
 
+/* The map page manages its own full-screen layout (map + sidebar/list
+   panes) - it should never let the underlying page scroll, on any
+   device. 100vh on mobile is measured including the browser's address
+   bar even while it's visibly hidden, so the page could end up taller
+   than what's actually on screen and become scrollable - dragging the
+   bottom Map/List toggle bar out of view along with it. 100dvh (dynamic
+   viewport height) tracks the REAL visible area as the browser chrome
+   shows/hides, closing that gap. The vh line stays as a fallback for
+   older browsers that don't understand dvh - they'll just ignore the
+   second rule and keep using the first. */
+.vambla-map-page {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  /* Pinned to the actual viewport rather than "the bottom of a flex
+     column that's supposed to be 100dvh tall" - this is what makes it
+     unconditionally visible and tappable even if something upstream
+     nudges the layout height by a pixel or two, rather than relying on
+     the flex layout alone to keep it in place. */
+  .mobile-toggle {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1300;
+  }
+  /* Leaves room at the bottom of the map/list panes so their own
+     content isn't hidden underneath the now-fixed toggle bar. */
+  .vambla-map-page .vambla-main { padding-bottom: 48px; }
+}
+
 /* ---------- shared navigation ---------- */
 .vambla-top-nav {
   display: flex;
