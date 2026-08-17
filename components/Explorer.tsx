@@ -394,7 +394,7 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
               ? `${listToShow.length} result${listToShow.length === 1 ? "" : "s"}`
               : `${listToShow.length} place${listToShow.length === 1 ? "" : "s"} ${userLoc ? "nearby" : activeCategories.length > 0 ? "found" : "in view"}`}
           </div>
-          <PlaceList places={listToShow} userLoc={userLoc} onSelect={handleSelectPlace} focusedPlaceName={focusedPlace?.name ?? null} />
+          <PlaceList places={listToShow} userLoc={userLoc} onSelect={navigateToPlace} focusedPlaceName={focusedPlace?.name ?? null} />
         </aside>
 
         <div className={`vambla-map-wrap ${mobilePane === "list" ? "hidden-mobile" : ""}`}>

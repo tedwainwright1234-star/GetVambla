@@ -134,16 +134,39 @@ type Props = {
   onCloseFocused?: () => void;
 };
 
+// The place detail card covers the bottom ~60% of the screen on mobile
+// (a bottom sheet) or the right ~380px on desktop (a side panel) - see
+// .vambla-place-card in globals.css. Centering the map normally on a
+// "navigate" target would put it right behind that card. This computes
+// a shifted map centre so the target instead lands in the middle of
+// whatever's actually still visible, above/beside the card.
+function computeOffsetCenter(map: L.Map, lat: number, lng: number, zoom: number): L.LatLng {
+  if (typeof window === "undefined") return L.latLng(lat, lng);
+  const isMobile = window.innerWidth <= 768;
+  const targetPoint = map.project([lat, lng], zoom);
+  // Shifting the "fake" centre further into the card's own footprint
+  // (south for a bottom sheet, east for a right panel) makes the real
+  // target render on the opposite side - i.e. in the visible area.
+  const shift = isMobile
+    ? L.point(0, Math.min(window.innerHeight * 0.6, window.innerHeight - 120) / 2 + 24)
+    : L.point(Math.min(380, window.innerWidth * 0.92) / 2, 0);
+  return map.unproject(targetPoint.add(shift), zoom);
+}
+
 function MapController({ userLoc, focusedPlace, focusIntent, suppressRef }: Pick<Props, "userLoc" | "focusedPlace" | "focusIntent"> & { suppressRef: React.MutableRefObject<boolean> }) {
   const map = useMap();
 
   // Only a genuine "navigate" (not a marker/list "select") ever changes
   // the zoom level - this is what keeps clicking a marker from zooming
-  // the map out to fit a fixed level.
+  // the map out to fit a fixed level. "navigate" is also always followed
+  // by the place card opening, so the target is offset to stay clear of
+  // it rather than landing dead-centre underneath.
   useEffect(() => {
     if (focusedPlace && focusIntent === "navigate") {
       suppressRef.current = true;
-      map.setView([focusedPlace.lat, focusedPlace.lng], 13, { animate: true });
+      const zoom = 13;
+      const center = computeOffsetCenter(map, focusedPlace.lat, focusedPlace.lng, zoom);
+      map.setView(center, zoom, { animate: true });
     }
   }, [focusedPlace, focusIntent, map, suppressRef]);
 
