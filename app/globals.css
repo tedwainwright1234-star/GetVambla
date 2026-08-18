@@ -207,12 +207,19 @@ html, body {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    /* bottom: 0 works fine in a regular mobile browser (the browser
+       chrome already sits below it), but inside the native Capacitor app
+       there's no browser chrome - bottom: 0 would put this bar's own
+       content flush against the iOS home-indicator area. Shifting the
+       whole bar up by the safe-area inset (0 on Android and on browsers
+       that don't report one) keeps its height/padding unchanged. */
+    bottom: env(safe-area-inset-bottom);
     z-index: 1300;
   }
   /* Leaves room at the bottom of the map/list panes so their own
-     content isn't hidden underneath the now-fixed toggle bar. */
-  .vambla-map-page .vambla-main { padding-bottom: 48px; }
+     content isn't hidden underneath the now-fixed toggle bar. Padded by
+     the same safe-area amount the bar itself was shifted by. */
+  .vambla-map-page .vambla-main { padding-bottom: calc(48px + env(safe-area-inset-bottom)); }
 }
 
 /* ---------- shared navigation ---------- */
@@ -240,7 +247,9 @@ html, body {
   .vambla-bottom-nav {
     display: flex;
     position: fixed;
-    bottom: 0; left: 0; right: 0;
+    /* Same reasoning as .mobile-toggle above - shift clear of the iOS
+       home indicator in the native app instead of sitting under it. */
+    bottom: env(safe-area-inset-bottom); left: 0; right: 0;
     background: var(--ink);
     border-top: 3px solid var(--ochre);
     z-index: 2000;
@@ -323,7 +332,7 @@ html, body {
        without this offset the toggle bar's higher z-index sat over the
        card's own bottom edge, cutting off the Directions/View Details
        buttons living there. 48px matches the toggle bar's actual height. */
-    top: auto; left: 0; right: 0; bottom: 48px;
+    top: auto; left: 0; right: 0; bottom: calc(48px + env(safe-area-inset-bottom));
     width: 100%;
     max-width: 100%;
     max-height: 46vh;
