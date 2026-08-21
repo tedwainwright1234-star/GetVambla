@@ -21,7 +21,7 @@ export default function PlaceQuickViewModal({ place, onClose }: Props) {
     <div
       onClick={onClose}
       style={{
-        position: "fixed", inset: 0, background: "rgba(28,37,48,0.55)",
+        position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(28,37,48,0.55)",
         display: "flex", alignItems: "center", justifyContent: "center",
         zIndex: 3000, padding: 20,
       }}

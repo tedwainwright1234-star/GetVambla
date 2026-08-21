@@ -21,13 +21,19 @@ export default function CollectionRow({ title, places, onSelectPlace, loading }:
           {title}
         </h2>
       </div>
-      <div style={{ display: "flex", gap: 14, overflowX: "auto", padding: "2px 20px 10px", scrollbarWidth: "thin" }}>
+      {/* marginRight on each card (not the `gap` property) - flexbox gap
+          isn't supported on older WebView engines (pre-Chrome 84), where
+          it silently does nothing and leaves cards flush against each
+          other. Margin has worked everywhere for decades. */}
+      <div style={{ display: "flex", overflowX: "auto", padding: "2px 20px 10px", scrollbarWidth: "thin" }}>
         {loading
           ? Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} style={{ width: 240, height: 210, flexShrink: 0, background: "var(--parchment-dark)", borderRadius: 14, opacity: 0.6 }} />
+              <div key={i} style={{ width: 240, height: 210, flexShrink: 0, marginRight: 14, background: "var(--parchment-dark)", borderRadius: 14, opacity: 0.6 }} />
             ))
           : places.map((p) => (
-              <PlaceCard key={p.name} place={p} onClick={() => onSelectPlace?.(p)} />
+              <div key={p.name} style={{ marginRight: 14 }}>
+                <PlaceCard place={p} onClick={() => onSelectPlace?.(p)} />
+              </div>
             ))}
       </div>
     </section>

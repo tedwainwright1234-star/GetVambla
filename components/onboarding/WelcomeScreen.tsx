@@ -32,7 +32,10 @@ export default function WelcomeScreen({ onFinish }: { onFinish: () => void }) {
       onClick={handleSkip}
       style={{
         position: 'fixed',
-        inset: 0,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         zIndex: 9999,
         backgroundColor: INK,
         display: 'flex',
