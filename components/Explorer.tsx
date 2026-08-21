@@ -68,7 +68,12 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
   );
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(initialUserLoc);
   const [locationLabel, setLocationLabel] = useState<string | null>(initialUserLoc ? initialLocLabel : null);
-  const [radiusMiles, setRadiusMiles] = useState<number | null>(paramRadius ? parseInt(paramRadius, 10) : 20);
+  // null = no radius filter active - just the live location dot shows,
+  // like Google/Apple Maps. Previously defaulted to 20, which meant the
+  // radius circle appeared automatically the instant you located
+  // yourself, whether you wanted it or not. Now it only appears once you
+  // deliberately drag the RadiusSelector slider.
+  const [radiusMiles, setRadiusMiles] = useState<number | null>(paramRadius ? parseInt(paramRadius, 10) : null);
   const [focusedPlace, setFocusedPlace] = useState<Place | null>(null);
   // "navigate" = deliberately jump to + zoom in on this place (exact
   // search, "Show on Map", a shared URL). "select" = clicked a marker or
@@ -321,8 +326,17 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
   }
 
   function clearLocation() {
+    // Actually stop the live GPS watch, not just reset the state that
+    // represents it - without this, the very next GPS update silently
+    // set userLoc right back a moment later, making "exit" not really
+    // work and potentially fighting with anything typed right after.
+    if (locationWatchIdRef.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(locationWatchIdRef.current);
+      locationWatchIdRef.current = null;
+    }
     setUserLoc(null);
     setLocationLabel(null);
+    setRadiusMiles(null);
   }
 
   // Pressing Enter (or tapping the mobile search button): "castles in
@@ -357,7 +371,7 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
         setFocusedPlace(null);
         setUserLoc({ lat: geo.lat, lng: geo.lng });
         setLocationLabel(parsed.location);
-        setRadiusMiles(parsed.radiusMiles ?? radiusMiles ?? 20);
+        setRadiusMiles(parsed.radiusMiles ?? null);
         setViewportBrowsing(false);
         setSearchQuery("");
         return;

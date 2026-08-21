@@ -6,8 +6,9 @@ import { useEffect, useState } from 'react';
 const INK = '#182C21';
 
 // How long the logo sits on screen before auto-continuing to the app.
-// Tap/click also skips it immediately.
-const AUTO_DISMISS_MS = 1600;
+// Tap/click also skips it immediately. (4000 = 4 seconds - change this
+// single number to whatever feels right, e.g. 3000 for 3s or 5000 for 5s.)
+const AUTO_DISMISS_MS = 4000;
 
 export default function WelcomeScreen({ onFinish }: { onFinish: () => void }) {
   const [visible, setVisible] = useState(true);
