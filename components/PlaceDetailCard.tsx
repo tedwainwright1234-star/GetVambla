@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import type { Place } from "@/lib/types";
 import { colorForCategory } from "@/lib/categoryStyle";
 import { haversineKm, kmToMiles } from "@/lib/distance";
@@ -13,6 +14,10 @@ type Props = {
   onClose: () => void;
 };
 
+// How far down (in px) the card needs to be dragged before letting go
+// counts as "dismiss" rather than snapping back into place.
+const SWIPE_DISMISS_THRESHOLD = 100;
+
 // Shown over the map (see .vambla-place-card in globals.css: a right-hand
 // panel on desktop, a bottom sheet on mobile) whenever a place is
 // focused - via exact search, "Show on Map", or clicking a marker/list
@@ -23,14 +28,61 @@ export default function PlaceDetailCard({ place, userLoc, onClose }: Props) {
   const hasValidCoords = Number.isFinite(place.lat) && Number.isFinite(place.lng);
   const distanceMiles = userLoc ? kmToMiles(haversineKm(userLoc.lat, userLoc.lng, place.lat, place.lng)) : null;
 
+  // Swipe-down-to-dismiss (mobile bottom sheet). Dragging is only
+  // tracked from the image/handle area at the top of the card, not the
+  // scrollable body below - otherwise scrolling the description text
+  // would fight with the dismiss gesture.
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const touchStartY = useRef<number | null>(null);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    touchStartY.current = e.touches[0].clientY;
+    setDragging(true);
+  }
+  function handleTouchMove(e: React.TouchEvent) {
+    if (touchStartY.current === null) return;
+    const delta = e.touches[0].clientY - touchStartY.current;
+    if (delta > 0) setDragY(delta); // only follow downward drags
+  }
+  function handleTouchEnd() {
+    setDragging(false);
+    if (dragY > SWIPE_DISMISS_THRESHOLD) {
+      onClose();
+    }
+    setDragY(0);
+    touchStartY.current = null;
+  }
+
   return (
-    <div className="vambla-place-card" role="dialog" aria-label={place.name}>
+    <div
+      className="vambla-place-card"
+      role="dialog"
+      aria-label={place.name}
+      style={{
+        transform: dragY ? `translateY(${dragY}px)` : undefined,
+        transition: dragging ? "none" : "transform 0.25s ease",
+      }}
+    >
+      {/* Small grab handle, mobile only (see .vambla-place-card-handle in
+          globals.css) - signals the card can be dragged, same visual
+          convention as most mobile bottom sheets. */}
+      <div
+        className="vambla-place-card-handle"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      />
       <div
         className="vambla-place-card-image"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         style={{
           flexShrink: 0, position: "relative", overflow: "hidden",
           background: place.imageUrl ? "#000" : `linear-gradient(135deg, ${color}dd, ${color}99)`,
           display: "flex", alignItems: "center", justifyContent: "center",
+          touchAction: "none",
         }}
       >
         {place.imageUrl ? (

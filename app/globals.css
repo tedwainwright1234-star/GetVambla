@@ -332,8 +332,19 @@ body.vambla-input-focused .vambla-bottom-nav {
   overflow: hidden;
 }
 .vambla-place-card-image { height: 170px; }
+.vambla-place-card-handle { display: none; }
 
 @media (max-width: 768px) {
+  .vambla-place-card-handle {
+    display: block;
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.18);
+    margin: 8px auto 0;
+    flex-shrink: 0;
+    touch-action: none; /* stops the browser's own scroll gesture from fighting the swipe */
+  }
   .vambla-place-card {
     position: fixed;
     /* Lifted clear of the fixed Map/List toggle bar below it (see
