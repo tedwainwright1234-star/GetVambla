@@ -34,6 +34,39 @@ export default function AppShell({ children }: { children: ReactNode }) {
     setShowWelcome(false);
   };
 
+  // When the on-screen keyboard opens, the visible page area shrinks -
+  // fixed-position bottom bars (.vambla-bottom-nav, .mobile-toggle) get
+  // recalculated relative to that new shorter height and end up shoved
+  // up into the middle of the screen, right under whatever input is
+  // focused, instead of staying at the bottom edge. Simplest reliable
+  // fix: just hide them while typing, same as most mobile apps do while
+  // a keyboard is open, and restore them once you're done.
+  useEffect(() => {
+    function isTextInput(el: EventTarget | null) {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
+    }
+
+    function handleFocusIn(e: FocusEvent) {
+      if (isTextInput(e.target)) {
+        document.body.classList.add('vambla-input-focused');
+      }
+    }
+    function handleFocusOut(e: FocusEvent) {
+      if (isTextInput(e.target)) {
+        document.body.classList.remove('vambla-input-focused');
+      }
+    }
+
+    window.addEventListener('focusin', handleFocusIn);
+    window.addEventListener('focusout', handleFocusOut);
+    return () => {
+      window.removeEventListener('focusin', handleFocusIn);
+      window.removeEventListener('focusout', handleFocusOut);
+    };
+  }, []);
+
   // Avoid a flash of the app before we know whether to show onboarding.
   if (!ready) return null;
 

@@ -178,6 +178,15 @@ html, body {
 .leaflet-container { touch-action: none; }
 .mobile-toggle { display: none; }
 
+/* Hides the fixed bottom bars while the on-screen keyboard is open (see
+   the focusin/focusout listener in AppShell.tsx) - otherwise they get
+   shoved up into the middle of the screen when the visible viewport
+   shrinks for the keyboard. */
+body.vambla-input-focused .mobile-toggle,
+body.vambla-input-focused .vambla-bottom-nav {
+  display: none !important;
+}
+
 /* The map page manages its own full-screen layout (map + sidebar/list
    panes) - it should never let the underlying page scroll, on any
    device. 100vh on mobile is measured including the browser's address
