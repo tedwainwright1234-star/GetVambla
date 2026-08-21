@@ -253,10 +253,22 @@ function MapController({ userLoc, focusedPlace, focusIntent, suppressRef }: Pick
   // A brand new location search (not a place selection, not closing a
   // card) recentres the map - this is the "Explore Near Me" / typed
   // location behaviour, unrelated to marker selection.
+  //
+  // Only the FIRST fix recentres the map, same as tapping the location
+  // button in Google Maps. userLoc now updates continuously (live
+  // tracking via watchPosition), and recentring on every single GPS
+  // ping would otherwise yank the map out from under anyone trying to
+  // pan around while their dot keeps moving.
+  const hasCenteredOnUserRef = useRef(false);
   useEffect(() => {
-    if (userLoc) {
+    if (userLoc && !hasCenteredOnUserRef.current) {
+      hasCenteredOnUserRef.current = true;
       suppressRef.current = true;
       map.setView([userLoc.lat, userLoc.lng], 10, { animate: true });
+    }
+    if (!userLoc) {
+      // Reset so the next "Locate Me" tap recentres again.
+      hasCenteredOnUserRef.current = false;
     }
   }, [userLoc, map, suppressRef]);
 

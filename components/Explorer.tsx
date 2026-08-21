@@ -188,21 +188,46 @@ export default function Explorer({ initialPlaces }: { initialPlaces: Place[] }) 
     return () => { cancelled = true; };
   }, [searchQuery]);
 
+  // Tracks the active watchPosition subscription so a second tap on
+  // "Locate Me" restarts tracking cleanly rather than stacking watchers,
+  // and so we can stop tracking when the component unmounts.
+  const locationWatchIdRef = useRef<number | null>(null);
+
   function handleLocate() {
     if (!navigator.geolocation) {
       alert("Geolocation is not available in this browser.");
       return;
     }
-    navigator.geolocation.getCurrentPosition(
+
+    if (locationWatchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(locationWatchIdRef.current);
+    }
+
+    setFocusedPlace(null);
+    setLocationLabel("your location");
+    setViewportBrowsing(false);
+
+    // watchPosition (not getCurrentPosition) keeps the marker updating
+    // live as the device moves, like Google Maps' blue dot - a single
+    // getCurrentPosition call only ever gave one snapshot.
+    locationWatchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
-        setFocusedPlace(null);
-        setLocationLabel("your location");
         setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setViewportBrowsing(false);
       },
-      () => alert("Could not get your location — try browsing the map instead.")
+      () => alert("Could not get your location — try browsing the map instead."),
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
     );
   }
+
+  // Stop watching location if the map view unmounts entirely, so it
+  // doesn't keep running (and draining battery) in the background.
+  useEffect(() => {
+    return () => {
+      if (locationWatchIdRef.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(locationWatchIdRef.current);
+      }
+    };
+  }, []);
 
   // A deliberate jump to a specific place - exact search match, "Show on
   // Map" from the homepage/detail page, or a shared/refreshed map URL.

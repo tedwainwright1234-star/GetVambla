@@ -7,11 +7,16 @@ export const metadata: Metadata = {
   description: "Discover remarkable historical and natural places near you.",
 };
 
-// viewportFit: "cover" lets the app draw edge-to-edge on iOS and report
-// env(safe-area-inset-*) values - without it those all resolve to 0 and
-// fixed bottom bars sit under the home-indicator gesture area in the
-// native app (this doesn't affect the regular browser site at all).
+// width/initialScale are the standard mobile-viewport settings Next.js
+// normally sets automatically - providing a custom `viewport` export
+// replaces that default entirely rather than adding to it, so they need
+// to be listed explicitly here too. viewportFit: "cover" is the addition
+// that lets the app draw edge-to-edge on iOS and report
+// env(safe-area-inset-*) values (0 on Android/regular browsers, so this
+// doesn't affect anything outside the native iOS app).
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
   viewportFit: "cover",
 };
 
