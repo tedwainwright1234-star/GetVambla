@@ -144,21 +144,25 @@ const TILE_LAYERS: Record<MapStyle, TileConfig> = {
     base: {
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       attribution: "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics",
-      maxZoom: 18,
+      maxZoom: 19,
     },
   },
   hybrid: {
     base: {
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       attribution: "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics",
-      maxZoom: 18,
+      // Was capped at 18, forcing Leaflet to stretch (blur) the zoom-18
+      // tile for anyone zooming in further. Esri's World_Imagery source
+      // genuinely has more detail available at 19 in most populated
+      // areas - this is real extra sharpness, not just upscaling.
+      maxZoom: 19,
     },
     // Roads, place names and boundaries, drawn transparently on top of
     // the satellite imagery above - this is what makes it "hybrid".
     overlay: {
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
       attribution: "Labels &copy; Esri",
-      maxZoom: 18,
+      maxZoom: 19,
     },
   },
 };
