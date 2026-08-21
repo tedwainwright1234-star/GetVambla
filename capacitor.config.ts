@@ -8,7 +8,7 @@ const config: CapacitorConfig = {
   // webDir is still required by the CLI even though it's not what gets loaded.
   webDir: 'out',
   server: {
-    url: 'https://vambla.com',
+    url: 'https://www.vambla.com',
     cleartext: false,
   },
   plugins: {
